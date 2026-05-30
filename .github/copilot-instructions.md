@@ -56,5 +56,5 @@ Sections for
 - minimal recovery path
 Append to audit artifact target.
 
-Did you check your checklist?
+6. MANDATORY:Did you check your checklist?
 Append to audit artifact target.
