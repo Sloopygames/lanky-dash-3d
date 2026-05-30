@@ -510,7 +510,7 @@ function Invoke-DirectMode {
     $status = Get-Status -Text $resultText -Parsed $parsed
     $applied = @()
     if (($parsed -is [hashtable]) -and $parsed.ContainsKey('actions') -and $parsed.actions) {
-        $applied = Apply-Actions $parsed.actions
+        $applied = @(Apply-Actions $parsed.actions)
     }
 
     $session.history += @(
@@ -688,7 +688,7 @@ function Invoke-SequenceMode {
             $status = Get-Status -Text $resultText -Parsed $parsed
             $applied = @()
             if (($parsed -is [hashtable]) -and $parsed.ContainsKey('actions') -and $parsed.actions) {
-                $applied = Apply-Actions $parsed.actions
+                $applied = @(Apply-Actions $parsed.actions)
             }
 
             $session.history += @(
