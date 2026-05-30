@@ -1,0 +1,33 @@
+name: Notify SloopyGames public site
+
+# Drop this file into each game repo's .github/workflows/ directory.
+# It fires a repository_dispatch on Sloopygames/public-website on every push to
+# the default branch, causing the public site to rebuild and redeploy.
+#
+# Required secret: SLOOPYGAMES_REPO_TOKEN
+#   - Best stored as an ORG-LEVEL secret on the Sloopygames org so every game
+#     repo inherits it automatically. Scope: repo write on public-website
+#     (fine-grained PAT or GitHub App installation token).
+
+on:
+  push:
+    branches: [main, master]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger public-website deploy
+        env:
+          GH_TOKEN: ${{ secrets.SLOOPYGAMES_REPO_TOKEN }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::warning::SLOOPYGAMES_REPO_TOKEN not set; relying on scheduled discovery"
+            exit 0
+          fi
+          gh api -X POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/Sloopygames/public-website/dispatches" \
+            -f event_type=game-updated \
+            -f "client_payload[repo]=${GITHUB_REPOSITORY}" \
+            -f "client_payload[sha]=${GITHUB_SHA}"
