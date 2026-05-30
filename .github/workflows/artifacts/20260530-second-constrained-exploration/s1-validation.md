@@ -4,6 +4,20 @@ Task id: 20260530-second-constrained-exploration
 Pack: S1 (A1 Pressure Crescendo, B1 Route Signaling 2.0, C1 Variant Deck Rotation)
 Status: In progress
 
+## Implementation Evidence (Current)
+
+Recent implementation commits relevant to S1 evidence capture:
+1. c10e063 - Add dynamic art-style blending, rare event tiers, and happy-hardcore music.
+2. e67c33b - Extend exploration artifact with style/event matrix and title metadata update.
+
+Key code anchors for S1 instrumentation and behavior checks:
+1. Missions and progression hooks: [index.html](index.html#L977), [index.html](index.html#L1032), [index.html](index.html#L1047)
+2. Spawn and anti-repeat director: [index.html](index.html#L1134), [index.html](index.html#L1135), [index.html](index.html#L1178)
+3. Boss telegraph/dodge windows: [index.html](index.html#L1232), [index.html](index.html#L1352), [index.html](index.html#L1766)
+4. Telemetry and debug outputs: [index.html](index.html#L968), [index.html](index.html#L1016), [index.html](index.html#L1846)
+
+This section confirms S1 mechanisms are implemented and instrumentable. Threshold rows remain data-pending.
+
 ## Validation Scope
 
 Validate S1 execution metrics against governance-approved thresholds before release promotion.
@@ -26,6 +40,30 @@ Validate S1 execution metrics against governance-approved thresholds before rele
   - define target profile id and browser build before capture
 - Build config:
   - record enabled flags: pulse, route signals, variant deck
+
+## Automated Run Protocol (No Manual Math)
+
+1. Capture baseline packet
+- Start from same browser/device profile and fixed seed set.
+- Run 30 baseline sessions.
+- Export telemetry snapshots and summary CSV/JSON.
+
+2. Capture S1 packet
+- Enable S1 feature flags only.
+- Run same fixed seed set for 30 sessions.
+- Export telemetry snapshots and summary CSV/JSON.
+
+3. Compute metrics
+- Use same extraction script/notebook for baseline and S1 packets.
+- Populate table values and pass/fail cells directly from computed outputs.
+
+4. Trigger evaluation
+- Populate stop/recover log from computed trigger checks.
+- Record any fallback action activation and timestamp.
+
+5. Governance packet
+- Attach computed metrics and raw telemetry references.
+- Submit this updated file for final governance pass.
 
 ## Baseline vs S1 Comparison Table
 
