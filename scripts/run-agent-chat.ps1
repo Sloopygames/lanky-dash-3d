@@ -6,6 +6,10 @@ param(
     [switch]$Raw,
     [switch]$AllowEdits,
     [switch]$Live,
+    [int]$MaxHistoryItems = 20,
+    [int]$MaxTextChars = 2000,
+    [int]$MaxApiRetries = 6,
+    [int]$RetryDelaySeconds = 12,
     [string]$SessionName = "",
     [string]$SessionDir = "",
     [string]$SequencePath = "",
@@ -43,6 +47,37 @@ function Write-Live([string]$Message) {
         $ts = (Get-Date).ToString("HH:mm:ss")
         Write-Host "[$ts] $Message"
     }
+}
+
+function Truncate-Text([string]$Text, [int]$MaxChars) {
+    if ([string]::IsNullOrEmpty($Text)) { return $Text }
+    if ($Text.Length -le $MaxChars) { return $Text }
+    return ($Text.Substring(0, $MaxChars) + "`n...[truncated]...")
+}
+
+function Get-RetryWaitSeconds([string]$ErrorText, [int]$FallbackSeconds) {
+    if ([string]::IsNullOrWhiteSpace($ErrorText)) { return $FallbackSeconds }
+    $match = [regex]::Match($ErrorText, '(?i)wait\s+(\d+)\s+seconds')
+    if ($match.Success) {
+        return [int]$match.Groups[1].Value
+    }
+    return $FallbackSeconds
+}
+
+function Is-RetryableError([string]$ErrorText) {
+    if ([string]::IsNullOrWhiteSpace($ErrorText)) { return $false }
+    $patterns = @(
+        'RateLimitReached',
+        'tokens_limit_reached',
+        '429',
+        '503',
+        'temporarily unavailable',
+        'please wait'
+    )
+    foreach ($p in $patterns) {
+        if ($ErrorText -match $p) { return $true }
+    }
+    return $false
 }
 
 function Strip-FrontMatter([string]$Text) {
@@ -206,7 +241,11 @@ $agentBody
     }
 
     $messages = @(@{ role = "system"; content = $systemText })
-    foreach ($entry in $Session.history) {
+    $historyItems = @($Session.history)
+    if ($MaxHistoryItems -gt 0 -and $historyItems.Count -gt $MaxHistoryItems) {
+        $historyItems = @($historyItems | Select-Object -Last $MaxHistoryItems)
+    }
+    foreach ($entry in $historyItems) {
         $messages += @{ role = $entry.role; content = $entry.content }
     }
     $messages += @{ role = "user"; content = $UserPrompt }
@@ -225,7 +264,30 @@ $agentBody
     $label = if ([string]::IsNullOrWhiteSpace($ContextLabel)) { $AgentName } else { "${ContextLabel}:${AgentName}" }
     Write-Live "START $label"
     $started = Get-Date
-    $response = Invoke-RestMethod -Method Post -Uri (Resolve-Endpoint $Endpoint) -Headers $headers -Body $payload
+    $response = $null
+    for ($attempt = 0; $attempt -le $MaxApiRetries; $attempt++) {
+        try {
+            $response = Invoke-RestMethod -Method Post -Uri (Resolve-Endpoint $Endpoint) -Headers $headers -Body $payload
+            break
+        }
+        catch {
+            $errorText = $_.Exception.Message
+            if ($_.ErrorDetails -and $_.ErrorDetails.Message) {
+                $errorText += "`n$($_.ErrorDetails.Message)"
+            }
+
+            $isRetryable = Is-RetryableError -ErrorText $errorText
+            if ((-not $isRetryable) -or $attempt -ge $MaxApiRetries) {
+                throw
+            }
+
+            $waitSeconds = Get-RetryWaitSeconds -ErrorText $errorText -FallbackSeconds $RetryDelaySeconds
+            if ($waitSeconds -lt 1) { $waitSeconds = $RetryDelaySeconds }
+            Write-Live "RETRY $label attempt $($attempt + 1)/$MaxApiRetries after ${waitSeconds}s"
+            Start-Sleep -Seconds $waitSeconds
+        }
+    }
+
     $elapsed = [int]((Get-Date) - $started).TotalSeconds
     Write-Live "DONE  $label in ${elapsed}s"
     if ($null -eq $response.choices -or $response.choices.Count -eq 0) {
@@ -337,7 +399,7 @@ function Apply-Actions($Actions) {
 }
 
 function Get-Status([string]$Text, $Parsed) {
-    if ($Parsed -and $Parsed.status) {
+    if (($Parsed -is [hashtable]) -and $Parsed.ContainsKey('status') -and $Parsed.status) {
         return ([string]$Parsed.status).ToLowerInvariant()
     }
     $lower = $Text.ToLowerInvariant()
@@ -380,7 +442,7 @@ function Invoke-DirectMode {
     }
     $status = Get-Status -Text $resultText -Parsed $parsed
     $applied = @()
-    if ($parsed -and $parsed.actions) {
+    if (($parsed -is [hashtable]) -and $parsed.ContainsKey('actions') -and $parsed.actions) {
         $applied = Apply-Actions $parsed.actions
     }
 
@@ -409,8 +471,8 @@ function Invoke-DirectMode {
     }
 
     if ($parsed) {
-        if ($parsed.output) { $parsed.output }
-        elseif ($parsed.summary) { $parsed.summary }
+        if (($parsed -is [hashtable]) -and $parsed.ContainsKey('output') -and $parsed.output) { $parsed.output }
+        elseif (($parsed -is [hashtable]) -and $parsed.ContainsKey('summary') -and $parsed.summary) { $parsed.summary }
         else { $resultText }
         if ($applied.Count -gt 0) {
             "Applied actions: $($applied -join ', ')"
@@ -465,7 +527,7 @@ function Invoke-SequenceMode {
         $executed++
         $stepId = [string]$step.id
 
-        if ($step.parallel) {
+        if (($step -is [hashtable]) -and $step.ContainsKey('parallel') -and $step.parallel) {
             Write-Live "STEP $stepId (parallel fan-out)"
             $branches = @($step.parallel)
             if ($branches.Count -eq 0) {
@@ -484,8 +546,10 @@ function Invoke-SequenceMode {
                 $branchText = Invoke-AgentCall -AgentName $branchAgent -UserPrompt $branchPrompt -Session $branchSession -Writable:$false -ContextLabel "$stepId/$branchId"
                 $branchParsed = Try-ParseJson $branchText
                 $branchStatus = Get-Status -Text $branchText -Parsed $branchParsed
-                $branchSummary = if ($branchParsed -and $branchParsed.summary) { [string]$branchParsed.summary } else { $branchStatus }
-                $branchOutput = if ($branchParsed -and $branchParsed.output) { [string]$branchParsed.output } else { $branchText }
+                $branchSummary = if (($branchParsed -is [hashtable]) -and $branchParsed.ContainsKey('summary') -and $branchParsed.summary) { [string]$branchParsed.summary } else { $branchStatus }
+                $branchOutput = if (($branchParsed -is [hashtable]) -and $branchParsed.ContainsKey('output') -and $branchParsed.output) { [string]$branchParsed.output } else { $branchText }
+                $branchSummary = Truncate-Text -Text $branchSummary -MaxChars $MaxTextChars
+                $branchOutput = Truncate-Text -Text $branchOutput -MaxChars $MaxTextChars
 
                 $branchResults += @{
                     id      = $branchId
@@ -544,7 +608,7 @@ function Invoke-SequenceMode {
         $stepPrompt = Expand-Template -Text ([string]$step.prompt) -Variables $variables
         Write-Live "STEP $stepId"
         $stepWritable = $false
-        if ($null -ne $step.allowEdits) {
+        if (($step -is [hashtable]) -and $step.ContainsKey('allowEdits') -and $null -ne $step.allowEdits) {
             $stepWritable = [bool]$step.allowEdits
         }
 
@@ -556,7 +620,7 @@ function Invoke-SequenceMode {
             }
             $status = Get-Status -Text $resultText -Parsed $parsed
             $applied = @()
-            if ($parsed -and $parsed.actions) {
+            if (($parsed -is [hashtable]) -and $parsed.ContainsKey('actions') -and $parsed.actions) {
                 $applied = Apply-Actions $parsed.actions
             }
 
@@ -575,8 +639,10 @@ function Invoke-SequenceMode {
             Save-Session -Session $session -PathValue $sessionPath
 
             $variables.lastStatus = $status
-            $variables.lastOutput = if ($parsed -and $parsed.output) { [string]$parsed.output } else { $resultText }
-            $variables.lastSummary = if ($parsed -and $parsed.summary) { [string]$parsed.summary } else { $status }
+            $variables.lastOutput = if (($parsed -is [hashtable]) -and $parsed.ContainsKey('output') -and $parsed.output) { [string]$parsed.output } else { $resultText }
+            $variables.lastSummary = if (($parsed -is [hashtable]) -and $parsed.ContainsKey('summary') -and $parsed.summary) { [string]$parsed.summary } else { $status }
+            $variables.lastOutput = Truncate-Text -Text $variables.lastOutput -MaxChars $MaxTextChars
+            $variables.lastSummary = Truncate-Text -Text $variables.lastSummary -MaxChars $MaxTextChars
             Write-Live "STATUS ${stepId}:${stepAgent} => $status"
 
             $next = Resolve-NextStep -Step $step -Status $status
@@ -606,12 +672,12 @@ function Invoke-SequenceMode {
             Save-Session -Session $session -PathValue $sessionPath
 
             $variables.lastStatus = "error"
-            $variables.lastOutput = $_.Exception.Message
+            $variables.lastOutput = Truncate-Text -Text $_.Exception.Message -MaxChars $MaxTextChars
             $variables.lastSummary = "error"
             Write-Live "STATUS ${stepId}:${stepAgent} => error ($($_.Exception.Message))"
 
             $next = Resolve-NextStep -Step $step -Status "error"
-            else {
+            if ([string]::IsNullOrWhiteSpace($next)) {
                 throw
             }
 
