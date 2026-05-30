@@ -35,3 +35,11 @@ bosses explode.
 Single self-contained `index.html`. Vanilla JavaScript with **Three.js**
 (loaded from a CDN importmap) for 3D rendering and the **Web Audio API** for
 procedural sound. No build step, no backend, no frameworks.
+
+## Camera Profile
+
+The camera now uses named profiles in `index.html` under `CAMERA_PROFILES`.
+Set `ACTIVE_CAMERA` to switch styles quickly:
+
+- `CAMERA_PROFILES.cute34` for the new cute 3/4 perspective (default).
+- `CAMERA_PROFILES.classic` for the original chase-camera framing.
