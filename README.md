@@ -66,6 +66,7 @@ Example calls:
 - `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/recover-sequence.json -SessionName recover-demo`
 - `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/parallel-fanout-sequence.json -SessionName fanout-demo`
 - `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/autonomous-parallel-5-iterations.json -SessionName autonomous-gdd-v1 -MaxSteps 80`
+- `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/autonomous-parallel-5-iterations.json -SessionName autonomous-gdd-v1 -MaxSteps 80 -Live`
 
 Notes:
 
@@ -77,6 +78,7 @@ Notes:
 - The included recover sequence shows how to route `explore -> implement -> audit -> recover -> audit` automatically.
 - Sequence steps can also define a `parallel` array for fan-out exploration; results are aggregated into `{{parallelResultsJson}}` for downstream merge prompts.
 - The autonomous 5-iteration sequence enforces at least five full cycles of `parallel explore -> merge -> implement -> audit` without human interaction, then defers only unresolved human-irreducible blockers.
+- `-Live` prints real-time terminal progress per step/agent (`START`, `DONE`, and status lines) during direct and sequence runs.
 - Override endpoint/model with `-Endpoint` and `-Model` if needed.
 
 ## Camera Profile

@@ -5,6 +5,7 @@ param(
     [string]$Endpoint = "",
     [switch]$Raw,
     [switch]$AllowEdits,
+    [switch]$Live,
     [string]$SessionName = "",
     [string]$SessionDir = "",
     [string]$SequencePath = "",
@@ -34,6 +35,13 @@ elseif (-not [string]::IsNullOrWhiteSpace($Prompt)) {
 function Ensure-Directory([string]$PathValue) {
     if (-not (Test-Path $PathValue)) {
         New-Item -ItemType Directory -Path $PathValue -Force | Out-Null
+    }
+}
+
+function Write-Live([string]$Message) {
+    if ($Live) {
+        $ts = (Get-Date).ToString("HH:mm:ss")
+        Write-Host "[$ts] $Message"
     }
 }
 
@@ -184,7 +192,7 @@ Rules:
 "@
 }
 
-function Invoke-AgentCall([string]$AgentName, [string]$UserPrompt, [hashtable]$Session, [bool]$Writable) {
+function Invoke-AgentCall([string]$AgentName, [string]$UserPrompt, [hashtable]$Session, [bool]$Writable, [string]$ContextLabel = "") {
     $agentBody = Get-AgentProfile $AgentName
     $systemText = @"
 You are running the local repository agent profile '$AgentName'.
@@ -214,7 +222,12 @@ $agentBody
         "Content-Type" = "application/json"
     }
 
+    $label = if ([string]::IsNullOrWhiteSpace($ContextLabel)) { $AgentName } else { "${ContextLabel}:${AgentName}" }
+    Write-Live "START $label"
+    $started = Get-Date
     $response = Invoke-RestMethod -Method Post -Uri (Resolve-Endpoint $Endpoint) -Headers $headers -Body $payload
+    $elapsed = [int]((Get-Date) - $started).TotalSeconds
+    Write-Live "DONE  $label in ${elapsed}s"
     if ($null -eq $response.choices -or $response.choices.Count -eq 0) {
         throw "No choices returned from endpoint."
     }
@@ -360,7 +373,7 @@ function Invoke-DirectMode {
     $resolvedSessionName = if ($SessionName) { $SessionName } else { "$Agent-$(Get-Date -Format 'yyyyMMdd-HHmmss')" }
     $sessionPath = Resolve-SessionPath $resolvedSessionName
     $session = Load-Session $sessionPath $resolvedSessionName
-    $resultText = Invoke-AgentCall -AgentName $Agent -UserPrompt $Prompt -Session $session -Writable:$AllowEdits
+    $resultText = Invoke-AgentCall -AgentName $Agent -UserPrompt $Prompt -Session $session -Writable:$AllowEdits -ContextLabel "direct"
     $parsed = if ($AllowEdits) { Try-ParseJson $resultText } else { $null }
     if ($AllowEdits -and (-not $parsed)) {
         throw "Edit mode requires JSON output matching the edit contract."
@@ -383,6 +396,7 @@ function Invoke-DirectMode {
         at      = (Get-Date).ToString("o")
     }
     Save-Session -Session $session -PathValue $sessionPath
+    Write-Live "STATUS direct:$Agent => $status"
 
     if ($Raw) {
         [ordered]@{
@@ -452,6 +466,7 @@ function Invoke-SequenceMode {
         $stepId = [string]$step.id
 
         if ($step.parallel) {
+            Write-Live "STEP $stepId (parallel fan-out)"
             $branches = @($step.parallel)
             if ($branches.Count -eq 0) {
                 throw "Step '$stepId' has an empty parallel block."
@@ -466,7 +481,7 @@ function Invoke-SequenceMode {
                 $branchSession = @{
                     history = @($preHistory)
                 }
-                $branchText = Invoke-AgentCall -AgentName $branchAgent -UserPrompt $branchPrompt -Session $branchSession -Writable:$false
+                $branchText = Invoke-AgentCall -AgentName $branchAgent -UserPrompt $branchPrompt -Session $branchSession -Writable:$false -ContextLabel "$stepId/$branchId"
                 $branchParsed = Try-ParseJson $branchText
                 $branchStatus = Get-Status -Text $branchText -Parsed $branchParsed
                 $branchSummary = if ($branchParsed -and $branchParsed.summary) { [string]$branchParsed.summary } else { $branchStatus }
@@ -479,6 +494,7 @@ function Invoke-SequenceMode {
                     summary = $branchSummary
                     output  = $branchOutput
                 }
+                Write-Live "STATUS ${stepId}/${branchId}:${branchAgent} => $branchStatus"
             }
 
             $aggregateStatus = "pass"
@@ -506,6 +522,7 @@ function Invoke-SequenceMode {
             $variables.lastSummary = "parallel:$aggregateStatus"
             $variables.lastOutput = $parallelJson
             $variables.parallelResultsJson = $parallelJson
+            Write-Live "STATUS $stepId aggregate => $aggregateStatus"
 
             $next = Resolve-NextStep -Step $step -Status $aggregateStatus
             if ([string]::IsNullOrWhiteSpace($next) -or $next -eq "next") {
@@ -525,13 +542,14 @@ function Invoke-SequenceMode {
 
         $stepAgent = [string]$step.agent
         $stepPrompt = Expand-Template -Text ([string]$step.prompt) -Variables $variables
+        Write-Live "STEP $stepId"
         $stepWritable = $false
         if ($null -ne $step.allowEdits) {
             $stepWritable = [bool]$step.allowEdits
         }
 
         try {
-            $resultText = Invoke-AgentCall -AgentName $stepAgent -UserPrompt $stepPrompt -Session $session -Writable:$stepWritable
+            $resultText = Invoke-AgentCall -AgentName $stepAgent -UserPrompt $stepPrompt -Session $session -Writable:$stepWritable -ContextLabel $stepId
             $parsed = Try-ParseJson $resultText
             if ($stepWritable -and (-not $parsed)) {
                 throw "Step '$stepId' requires JSON output matching the edit contract."
@@ -559,6 +577,7 @@ function Invoke-SequenceMode {
             $variables.lastStatus = $status
             $variables.lastOutput = if ($parsed -and $parsed.output) { [string]$parsed.output } else { $resultText }
             $variables.lastSummary = if ($parsed -and $parsed.summary) { [string]$parsed.summary } else { $status }
+            Write-Live "STATUS ${stepId}:${stepAgent} => $status"
 
             $next = Resolve-NextStep -Step $step -Status $status
 
@@ -589,6 +608,7 @@ function Invoke-SequenceMode {
             $variables.lastStatus = "error"
             $variables.lastOutput = $_.Exception.Message
             $variables.lastSummary = "error"
+            Write-Live "STATUS ${stepId}:${stepAgent} => error ($($_.Exception.Message))"
 
             $next = Resolve-NextStep -Step $step -Status "error"
             else {
