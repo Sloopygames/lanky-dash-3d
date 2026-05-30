@@ -9,6 +9,266 @@ Run a second constrained exploration pass for all target profiles without claimi
 - Max strategic depth
 - Max replayability with lowest implementation risk
 
+## Focus Extension: Style, Rare Events, and Emotional Amplification
+
+### Orthogonal novelty dimensions
+
+1. Visual abstraction level
+- Flat iconographic, cel-shaded toy, stylized realism, collage surreal, neon vector minimal.
+2. Surface energy density
+- Calm readable lanes to high-noise kinetic VFX and texture turbulence.
+3. Rhythm pressure profile
+- Steady groove, wave burst pacing, and sudden spike windows.
+4. Arithmetic semantics expression
+- Gates as signs, creatures, graffiti glyphs, or diegetic machinery.
+5. Boss emotional framing
+- Comic relief, terror pressure, heroic duel, absurd spectacle.
+6. Audio architecture
+- Melody-led uplift, kick-driven rush, breakbeat syncopation, crowd-hype stabs.
+7. Event rarity topology
+- Frequent micro-surprises, uncommon tactical twists, ultra-rare spectacle events.
+8. Player agency locus
+- Route planning agency, timing mastery agency, build/loadout agency.
+9. World coherence strategy
+- Hard biome boundaries, soft gradients, narrative contamination across transitions.
+10. Recoverability curve
+- Punishing collapse, clutch rescue windows, rebound multipliers.
+
+### Exponential probability table for random and rare events
+
+Use exponentially decaying rarity buckets to keep surprising moments memorable while preserving readability.
+
+Parameters:
+- p0 = 0.18 (common surprise baseline)
+- Decay ratio r = 0.42
+- Probability per opportunity: p_n = p0 * r^n
+
+| Tier | Event class | p_n per event roll | Approx one hit every N rolls | Intended use |
+|---|---|---:|---:|---|
+| T0 | Common micro-variation | 0.180000 | 6 | lane graffiti swaps, tiny confetti pops |
+| T1 | Uncommon detail burst | 0.075600 | 13 | bonus crowd cheer, brief palette pulse |
+| T2 | Rare tactical twist | 0.031752 | 31 | temporary gate volatility window |
+| T3 | Very rare spectacle | 0.013336 | 75 | mini meteor shower outside track |
+| T4 | Ultra-rare explosive setpiece | 0.005601 | 179 | chain-reaction boss intro detonation |
+| T5 | Mythic run-defining moment | 0.002352 | 425 | biome rupture with synchronized bass drop |
+
+Operational notes:
+- Run independent rolls at controlled hooks: biome entry, boss prelude, combo milestones, near-miss streaks.
+- Add pity timer for T4/T5: guaranteed promotion by one tier if no T3+ event in M hooks.
+- Add anti-cluster cooloff: after T3+, reduce T3+ chance for next K hooks to protect readability.
+
+### Candidate trajectories (safe, hybrid, radical)
+
+#### Trajectory S (safe): "Festival Runner"
+- Novelty:
+  - Adds high-frequency joyful details and occasional fireworks without changing core lane logic.
+- Player impact:
+  - More delight per minute, better emotional uplift, low frustration increase.
+- Coherence with identity:
+  - Strong. Arithmetic growth and boss smash stay central.
+- Implementation risk:
+  - Low.
+- Governance re-audit needs:
+  - Medium: verify visual clutter ceilings and frame-time impact.
+
+Key additions:
+- Happy-hardcore light pass (higher BPM lead layer, cleaner kicks, brighter supersaw chords).
+- T0-T2 event usage only in first release slice.
+- Smooth biome transition blending over 6-10s with lane readability lock.
+
+#### Trajectory H (hybrid): "Euphoria-Then-Chaos"
+- Novelty:
+  - Contrasts bright uplifting sections with rare coherent explosive ruptures.
+- Player impact:
+  - Strong memorable spikes, stronger stream/share moments, clutch storytelling.
+- Coherence with identity:
+  - Strong if rupture windows preserve lane telegraphs.
+- Implementation risk:
+  - Medium.
+- Governance re-audit needs:
+  - High: fairness under rare events, deterministic seed consistency.
+
+Key additions:
+- T0-T4 enabled.
+- Rare explosive events tied to mastery triggers (high combo, near-boss threshold).
+- Boss intros gain synchronized audiovisual shock moments.
+
+#### Trajectory R (radical): "Mythic Collapse Ladder"
+- Novelty:
+  - Ultra-rare world-state fractures with temporary rule distortions and asymmetrical reward windows.
+- Player impact:
+  - Massive memorability and emergent narrative, plus heightened risk of overwhelm.
+- Coherence with identity:
+  - Medium unless distortion windows are short and arithmetic goals remain legible.
+- Implementation risk:
+  - High.
+- Governance re-audit needs:
+  - Critical: identity drift, accessibility, motion comfort, exploit prevention.
+
+Key additions:
+- Full T0-T5 table enabled with strict cooloffs.
+- Temporary "fracture" modifiers (lane gravity wobble, gate sign inversion feints).
+- Event-driven boss variants that alter one mechanic only.
+
+### Wide art-style exploration set
+
+1. Toybox Pop Clay
+- Rounded geo, hand-painted gradients, chunky outlines, playful debris.
+2. Neo-Arcade Vector
+- Clean geometric lanes, emissive edge lines, minimal but punchy color blocks.
+3. Sticker Bomb Collage
+- Layered decals, cutout textures, animated paper tears, absurd humor accents.
+4. Bubblegum Mecha
+- Cute industrial gates, candy alloy surfaces, mascot hazard bots.
+5. Hyperflat Sports Broadcast
+- Bold overlays, instant replays for boss smashes, dynamic lower-third stats.
+6. Dream Pastel Vapor Toy
+- Soft fog, iridescent rails, gentle bloom with high contrast gates.
+7. Carnival Night Rave
+- LED rigs, confetti cannons, crowd silhouettes, stage-like boss arenas.
+8. Inked Comic Impact
+- Halftone shadows, speed lines, freeze-frame impact cards.
+9. Biolum Jungle Synth
+- Organic neon flora, spores, glowing arithmetic glyphs.
+10. Retro Futurist Chrome Pop
+- Reflective candy chrome, checker floors, synth race nostalgia.
+11. Glitch Graffiti Metro
+- Spray textures, scanline glitches, rebellious math signage.
+12. Storybook Monster Parade
+- Whimsical creature hazards, hand-inked outlines, fairy-tale palette.
+
+### Prioritized top-5 styles for direct implementation
+
+Selection criteria:
+- High novelty per cost.
+- Strong fit with happy-hardcore direction.
+- Clear lane/gate readability.
+- Compatible with existing cute 3/4 framing and current UI language.
+
+1. Carnival Night Rave
+- Why top:
+  - Best fit for happy-hardcore energy and explosive event framing.
+- Emotional target:
+  - Joyful hype and festival adrenaline.
+- Replayability vector:
+  - Event stage variations and crowd-reactive moments.
+
+2. Toybox Pop Clay
+- Why top:
+  - Maximum charm and broad appeal with low cognitive burden.
+- Emotional target:
+  - Delight, attachment, playful triumph.
+- Replayability vector:
+  - Collectible prop sets and biome toy themes.
+
+3. Neo-Arcade Vector
+- Why top:
+  - Best readability for high-speed arithmetic choices.
+- Emotional target:
+  - Flow-state confidence and precision mastery.
+- Replayability vector:
+  - Colorway packs and rule-set variants.
+
+4. Inked Comic Impact
+- Why top:
+  - Makes boss-smash moments iconic and screenshot-worthy.
+- Emotional target:
+  - Heroic impact and exaggerated catharsis.
+- Replayability vector:
+  - Procedural panel frames for major events.
+
+5. Bubblegum Mecha
+- Why top:
+  - Adds personality depth without destabilizing core mechanics.
+- Emotional target:
+  - Empowered playful aggression.
+- Replayability vector:
+  - Hazard bot families and boss archetype remixes.
+
+### Smooth transitions between levels and styles
+
+Transition stack:
+1. Palette interpolation
+- Use 3-phase lerp: sky/fog first, props second, gate accent last.
+2. Geometry handoff zones
+- 120-180m "blend corridors" where both biome prop grammars coexist.
+3. Audio stem crossfades
+- Kick and bass remain stable; lead and FX morph over 8-16 bars.
+4. Event gating
+- Disable T3+ events during first 4s of transitions to preserve onboarding clarity.
+5. Camera continuity
+- Keep camera profile fixed during transitions; no simultaneous camera and style jumps.
+
+### Happy-hardcore music direction (directable in current procedural audio)
+
+Core spec:
+- BPM target: 168-178.
+- Rhythmic base: four-on-the-floor kick with offbeat open hat.
+- Bass: rolling octave bass with sidechain ducking.
+- Harmony: bright major/minor modal interchange, short euphoric chord loops.
+- Leads: supersaw/pluck hooks with octave doubles.
+- FX: risers, uplifters, snare builds before boss impacts.
+
+Adaptive mapping:
+- Normal segments: full groove at medium density.
+- Pulse/clutch windows: add ride layer and lead arpeggio intensity.
+- Boss prelude: HPF sweep + snare rush + vocal-chop style synth stab.
+- Smash success: one-bar "euphoria hit" chord burst.
+- Failure: quick harmonic drop, then immediate hopeful rebuild motif.
+
+### Random details and rare explosive events
+
+Micro-random details (T0-T1):
+- Billboard jokes that reflect recent gate choices.
+- Tiny spectator mascots doing contextual cheers.
+- Lane-edge props that react to near misses.
+
+Rare explosive events (T3-T5):
+- Chain Firework Spine:
+  - Trackside fireworks launch in arithmetic pattern matching recent combo.
+- Boss Arena Blackout Flash:
+  - 0.7s blackout then neon silhouette reveal with bass slam.
+- Biome Fracture Bloom:
+  - Ground crack emits color wave; next 8s has altered gate silhouettes only.
+- Meteor Confetti Rain:
+  - Non-lethal sky event synchronized to chorus drop.
+
+Safety constraints for explosive events:
+- Never hide active hazard telegraph geometry.
+- Never alter collision boxes during spectacle.
+- Cap simultaneous post-processing passes per quality tier.
+
+### Emotional targets, emergent opportunities, replayability vectors
+
+Emotional targets:
+- Uplifted momentum.
+- Clutch relief.
+- Dominance catharsis on smash.
+- Rare awe during spectacle tiers.
+
+Emergent behavior opportunities:
+- Players route intentionally to farm event-trigger states.
+- Near-miss specialists create "risk artist" playstyle.
+- Combo hunters learn transition timing to chain T2-T3 opportunities.
+
+Replayability vectors:
+- Style rotation with continuity-preserving transitions.
+- Event memory economy: players chase mythic-tier moments.
+- Variant deck + style pairings produce fresh yet coherent runs.
+
+### Governance re-audit recommendations
+
+Audit required:
+1. Performance and comfort envelope under style/event stacking.
+2. Determinism check when exponential rolls interact with adaptive triggers.
+3. Readability audit during transition corridors and explosive events.
+4. Fairness audit on event-triggered reward multipliers.
+
+Severity guidance:
+- Safe trajectory S: Medium gate.
+- Hybrid trajectory H: High gate.
+- Radical trajectory R: Critical gate.
+
 ## Constraints
 
 - Preserve core identity: fast 3-lane arithmetic size-runner with hazard dodge and boss smash payoff.
