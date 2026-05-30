@@ -3,6 +3,12 @@ param(
     [string]$Prompt,
     [string]$Model = "gpt-4o-mini",
     [string]$Endpoint = "",
+    [ValidateSet("api", "cli")]
+    [string]$Backend = "api",
+    [string]$CliCommand = "copilot",
+    [string[]]$CliArgs = @(),
+    [ValidateSet("stdin", "arg")]
+    [string]$CliPromptMode = "stdin",
     [switch]$Raw,
     [switch]$AllowEdits,
     [switch]$Live,
@@ -227,6 +233,33 @@ Rules:
 "@
 }
 
+function Invoke-CliModel([string]$InputText, [string]$Label) {
+    $cmd = Get-Command $CliCommand -ErrorAction SilentlyContinue
+    if (-not $cmd) {
+        throw "CLI backend selected but command '$CliCommand' was not found in PATH."
+    }
+
+    Write-Live "START $Label"
+    $started = Get-Date
+
+    $output = ""
+    if ($CliPromptMode -eq "arg") {
+        $allArgs = @($CliArgs + @($InputText))
+        $output = (& $cmd.Source @allArgs 2>&1 | Out-String)
+    }
+    else {
+        $output = ($InputText | & $cmd.Source @CliArgs 2>&1 | Out-String)
+    }
+
+    if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) {
+        throw "CLI backend command '$CliCommand' failed with exit code $LASTEXITCODE. Output: $output"
+    }
+
+    $elapsed = [int]((Get-Date) - $started).TotalSeconds
+    Write-Live "DONE  $Label in ${elapsed}s"
+    return $output.Trim()
+}
+
 function Invoke-AgentCall([string]$AgentName, [string]$UserPrompt, [hashtable]$Session, [bool]$Writable, [string]$ContextLabel = "") {
     $agentBody = Get-AgentProfile $AgentName
     $systemText = @"
@@ -250,6 +283,18 @@ $agentBody
     }
     $messages += @{ role = "user"; content = $UserPrompt }
 
+    $label = if ([string]::IsNullOrWhiteSpace($ContextLabel)) { $AgentName } else { "${ContextLabel}:${AgentName}" }
+    if ($Backend -eq "cli") {
+        $cliPrompt = @{
+            messages = $messages
+            model = $Model
+            repositoryRoot = $repoRoot
+            writable = $Writable
+            agent = $AgentName
+        } | ConvertTo-Json -Depth 25
+        return Invoke-CliModel -InputText $cliPrompt -Label $label
+    }
+
     $payload = @{
         model       = $Model
         messages    = $messages
@@ -261,13 +306,14 @@ $agentBody
         "Content-Type" = "application/json"
     }
 
-    $label = if ([string]::IsNullOrWhiteSpace($ContextLabel)) { $AgentName } else { "${ContextLabel}:${AgentName}" }
-    Write-Live "START $label"
-    $started = Get-Date
     $response = $null
     for ($attempt = 0; $attempt -le $MaxApiRetries; $attempt++) {
         try {
+            Write-Live "START $label"
+            $started = Get-Date
             $response = Invoke-RestMethod -Method Post -Uri (Resolve-Endpoint $Endpoint) -Headers $headers -Body $payload
+            $elapsed = [int]((Get-Date) - $started).TotalSeconds
+            Write-Live "DONE  $label in ${elapsed}s"
             break
         }
         catch {
@@ -288,8 +334,6 @@ $agentBody
         }
     }
 
-    $elapsed = [int]((Get-Date) - $started).TotalSeconds
-    Write-Live "DONE  $label in ${elapsed}s"
     if ($null -eq $response.choices -or $response.choices.Count -eq 0) {
         throw "No choices returned from endpoint."
     }

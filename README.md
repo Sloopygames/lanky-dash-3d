@@ -1,8 +1,8 @@
 # Lanky Dash
 
 A 3D endless **size-runner**. You auto-run down a three-lane track as a scrawny
-stick figure. Steer through math gates to change your **POWER** — `+5` and `×2`
-make you taller and wider, `−3` and `÷2` shrink you. Dodge spinning saws,
+stick figure. Steer through math gates to change your **POWER** ΓÇö `+5` and `├ù2`
+make you taller and wider, `ΓêÆ3` and `├╖2` shrink you. Dodge spinning saws,
 swinging hammers and brick walls (they knock your power down). Every stretch of
 track ends in a **boss**: charge it, and if your POWER beats the number floating
 over its head you smash clean through in a shower of debris and keep going,
@@ -13,7 +13,7 @@ bosses explode.
 
 ## Controls
 
-- **Steer:** `←` / `→` or `A` / `D` — or drag / tap the left or right side of the
+- **Steer:** `ΓåÉ` / `ΓåÆ` or `A` / `D` ΓÇö or drag / tap the left or right side of the
   screen (swipe on mobile).
 - **Start / Retry:** `Space`, `Enter`, click, or tap.
 - **Pause:** `P` or `Esc`.
@@ -25,7 +25,7 @@ bosses explode.
 ## Features
 
 - Procedural endless track that speeds up the further you get.
-- `+`, `×`, `−`, `÷` gates with real route-choice tension.
+- `+`, `├ù`, `ΓêÆ`, `├╖` gates with real route-choice tension.
 - Volatile high-reward gates, shield pickups, and overcharge risk/reward.
 - Auto-smash bosses with escalating POWER thresholds.
 - Multi-pattern bosses with telegraphed dodge windows.
@@ -67,6 +67,7 @@ Example calls:
 - `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/parallel-fanout-sequence.json -SessionName fanout-demo`
 - `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/autonomous-parallel-5-iterations.json -SessionName autonomous-gdd-v1 -MaxSteps 80`
 - `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/autonomous-parallel-5-iterations.json -SessionName autonomous-gdd-v1 -MaxSteps 80 -Live`
+- `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/autonomous-parallel-5-iterations.json -SessionName autonomous-gdd-v1 -MaxSteps 80 -Live -Backend cli -CliCommand copilot`
 
 Notes:
 
@@ -79,6 +80,9 @@ Notes:
 - Sequence steps can also define a `parallel` array for fan-out exploration; results are aggregated into `{{parallelResultsJson}}` for downstream merge prompts.
 - The autonomous 5-iteration sequence enforces at least five full cycles of `parallel explore -> merge -> implement -> audit` without human interaction, then defers only unresolved human-irreducible blockers.
 - `-Live` prints real-time terminal progress per step/agent (`START`, `DONE`, and status lines) during direct and sequence runs.
+- `-Backend api|cli` selects direct endpoint calls (`api`, default) or an external CLI backend (`cli`).
+- `-CliCommand` sets the executable for CLI backend calls (default: `copilot`).
+- `-CliPromptMode stdin|arg` controls whether the composed prompt payload is sent over stdin or as the final CLI argument.
 - Override endpoint/model with `-Endpoint` and `-Model` if needed.
 
 ## Camera Profile
