@@ -1,7 +1,7 @@
 # Task Closeout
 
 Task id: 20260530-second-constrained-exploration
-Status: Closed (workflow), with gated follow-on execution tracks
+Status: Planning workflow closed; validation and final promotion are pending
 
 ## Closed Items Register
 
@@ -22,11 +22,13 @@ Status: Closed (workflow), with gated follow-on execution tracks
 - artifact: .github/workflows/artifacts/20260530-second-constrained-exploration/audit-rerun.md
 
 5. Promotion decision
-- status: closed
-- decision:
-  - S1 promoted to implementation candidate gate
-  - S2 held as conditional opt-in track
-  - X held as experimental-only track
+- status: pending validation evidence
+- interim decision:
+  - S1 candidate eligible for implementation gate after validation pass
+  - S2 remains conditional opt-in
+  - X remains experimental-only
+- deep-audit artifact used: .github/workflows/artifacts/20260530-second-constrained-exploration/deep-audit.md (cycle: deep-audit-20260530)
+- promotion decision artifact: .github/workflows/artifacts/20260530-second-constrained-exploration/promotion-decision.md
 
 6. S1 implementation planning
 - status: closed
@@ -56,7 +58,8 @@ This task's required workflow items are closed:
 - Promotion recommendation
 - Implementation candidate planning
 
-No blocking governance gaps remain for S1 candidate promotion at planning level.
+No blocking governance gaps remain for planning closure. Validation gate remains open until s1-validation metrics and owner approvals are completed and audited.
+Promotion readiness status: defer (pending validation evidence and trigger outcomes).
 
 ## Next Artifact Target
 
@@ -64,5 +67,5 @@ For execution closure of S1 runtime metrics, create:
 - .github/workflows/artifacts/20260530-second-constrained-exploration/s1-validation.md
 
 Status update:
-- created and ready for data capture.
-- human approval received; deferred human gate cleared.
+- created; data capture in progress.
+- human approval and deferred gate closure pending completed validation audit.
