@@ -1,0 +1,56 @@
+{
+  "sessionName": "recover-sequence-demo",
+  "variables": {
+    "task": "Improve the requested feature in index.html and keep docs aligned.",
+    "auditTarget": ".github/workflows/artifacts/20260530-second-constrained-exploration/audit.md"
+  },
+  "steps": [
+    {
+      "id": "explore",
+      "agent": "exploration-operator",
+      "prompt": "Task: {{task}}\nReturn a grounded implementation plan with affected files, risks, and a recommended audit target.",
+      "on": {
+        "default": "implement"
+      }
+    },
+    {
+      "id": "implement",
+      "agent": "exploration-operator",
+      "allowEdits": true,
+      "prompt": "Implement the approved plan for this repository. Make the smallest coherent code/documentation edits needed for: {{task}}. If file changes are needed, respond with JSON actions only.",
+      "on": {
+        "success": "audit",
+        "pass": "audit",
+        "fail": "recover",
+        "error": "recover",
+        "repair-required": "recover",
+        "default": "audit"
+      }
+    },
+    {
+      "id": "audit",
+      "agent": "governance-auditor",
+      "prompt": "Audit the latest implementation state for: {{task}}. Use kernel Intent -> Admissibility -> Coverage -> Integrity -> Evidence -> Stop/Recover. Use audit target {{auditTarget}}. Return pass/fail, violations, evidence, and minimal recovery path.",
+      "on": {
+        "pass": "stop",
+        "fail": "recover",
+        "defer": "recover",
+        "error": "recover",
+        "default": "recover"
+      }
+    },
+    {
+      "id": "recover",
+      "agent": "exploration-operator",
+      "allowEdits": true,
+      "prompt": "Recover from the last failure using this context. Last status: {{lastStatus}}. Last summary: {{lastSummary}}. Last output: {{lastOutput}}. Apply the minimum repair needed in this repo and respond with JSON actions only.",
+      "on": {
+        "success": "audit",
+        "pass": "audit",
+        "fail": "stop",
+        "error": "stop",
+        "default": "audit"
+      }
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "sessionName": "parallel-fanout-demo",
+  "variables": {
+    "task": "Propose and implement a safe readability improvement for index.html.",
+    "auditTarget": ".github/workflows/artifacts/20260530-second-constrained-exploration/audit.md"
+  },
+  "steps": [
+    {
+      "id": "fanout-explore",
+      "parallel": [
+        {
+          "id": "safe-path",
+          "agent": "exploration-operator",
+          "prompt": "Task: {{task}} Return a conservative implementation candidate with low regression risk and explicit affected files."
+        },
+        {
+          "id": "chaos-path",
+          "agent": "expressive-chaos-explorer",
+          "prompt": "Task: {{task}} Return a high-novelty candidate while preserving gameplay readability and core identity."
+        }
+      ],
+      "on": {
+        "error": "recover",
+        "fail": "recover",
+        "default": "merge-plan"
+      }
+    },
+    {
+      "id": "merge-plan",
+      "agent": "exploration-operator",
+      "prompt": "Use these parallel exploration results to produce one merged implementation plan: {{parallelResultsJson}}. Keep it minimal and auditable.",
+      "on": {
+        "default": "implement"
+      }
+    },
+    {
+      "id": "implement",
+      "agent": "exploration-operator",
+      "allowEdits": true,
+      "prompt": "Implement the merged plan for this repo. Make the smallest coherent set of edits. Respond with JSON actions only.",
+      "on": {
+        "pass": "audit",
+        "success": "audit",
+        "fail": "recover",
+        "error": "recover",
+        "repair-required": "recover",
+        "default": "audit"
+      }
+    },
+    {
+      "id": "audit",
+      "agent": "governance-auditor",
+      "prompt": "Audit implementation for {{task}} using kernel Intent -> Admissibility -> Coverage -> Integrity -> Evidence -> Stop/Recover. Use audit target {{auditTarget}}.",
+      "on": {
+        "pass": "stop",
+        "fail": "recover",
+        "defer": "recover",
+        "error": "recover",
+        "default": "recover"
+      }
+    },
+    {
+      "id": "recover",
+      "agent": "exploration-operator",
+      "allowEdits": true,
+      "prompt": "Recover from failure. Last status: {{lastStatus}}. Last output: {{lastOutput}}. Apply minimum repair and return JSON actions only.",
+      "on": {
+        "pass": "audit",
+        "success": "audit",
+        "default": "stop"
+      }
+    }
+  ]
+}

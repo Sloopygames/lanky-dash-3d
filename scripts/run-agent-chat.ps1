@@ -1,94 +1,635 @@
 param(
-    [Parameter(Mandatory = $true)]
     [string]$Agent,
-
-    [Parameter(Mandatory = $true)]
     [string]$Prompt,
-
     [string]$Model = "gpt-4o-mini",
     [string]$Endpoint = "",
-    [switch]$Raw
+    [switch]$Raw,
+    [switch]$AllowEdits,
+    [string]$SessionName = "",
+    [string]$SessionDir = "",
+    [string]$SequencePath = "",
+    [int]$MaxSteps = 20
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$agentFile = Join-Path $repoRoot ".github/agents/$Agent.agent.md"
-
-if (-not (Test-Path $agentFile)) {
-    $agentDir = Join-Path $repoRoot ".github/agents"
-    $available = @()
-    if (Test-Path $agentDir) {
-        $available = Get-ChildItem $agentDir -Filter "*.agent.md" | ForEach-Object { $_.BaseName -replace "\.agent$", "" }
-    }
-    $availableText = if ($available.Count -gt 0) { $available -join ", " } else { "(none found)" }
-    throw "Agent file not found: $agentFile`nAvailable agents: $availableText"
+if ([string]::IsNullOrWhiteSpace($SessionDir)) {
+    $SessionDir = Join-Path $repoRoot ".agent-sessions"
 }
 
-$token = if ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } elseif ($env:GH_TOKEN) { $env:GH_TOKEN } else { "" }
-if ([string]::IsNullOrWhiteSpace($token)) {
+if ([string]::IsNullOrWhiteSpace($SequencePath)) {
+    if ([string]::IsNullOrWhiteSpace($Agent)) {
+        throw "Provide -Agent for direct mode or -SequencePath for sequence mode."
+    }
+    if ([string]::IsNullOrWhiteSpace($Prompt)) {
+        throw "Provide -Prompt for direct mode or -SequencePath for sequence mode."
+    }
+}
+elseif (-not [string]::IsNullOrWhiteSpace($Prompt)) {
+    throw "Use either -Prompt or -SequencePath, not both."
+}
+
+function Ensure-Directory([string]$PathValue) {
+    if (-not (Test-Path $PathValue)) {
+        New-Item -ItemType Directory -Path $PathValue -Force | Out-Null
+    }
+}
+
+function Strip-FrontMatter([string]$Text) {
+    if ($Text.StartsWith("---")) {
+        $match = [regex]::Match($Text, "(?s)^---\r?\n.*?\r?\n---\r?\n")
+        if ($match.Success) {
+            return $Text.Substring($match.Length)
+        }
+    }
+    return $Text
+}
+
+function Get-AvailableAgents {
+    $agentDir = Join-Path $repoRoot ".github/agents"
+    if (-not (Test-Path $agentDir)) {
+        return @()
+    }
+
+    $flat = @(Get-ChildItem $agentDir -Filter "*.agent.md" | ForEach-Object { $_.BaseName -replace "\.agent$", "" })
+    $nested = @(Get-ChildItem $agentDir -Directory | Where-Object {
+            (Test-Path (Join-Path $_.FullName "AGENT.md")) -or (Test-Path (Join-Path $_.FullName "PROMPT.md"))
+        } | ForEach-Object { $_.Name })
+
+    return @($flat + $nested | Sort-Object -Unique)
+}
+
+function Get-AgentProfile([string]$AgentName) {
+    $flatPath = Join-Path $repoRoot ".github/agents/$AgentName.agent.md"
+    if (Test-Path $flatPath) {
+        return Strip-FrontMatter (Get-Content -Raw -Path $flatPath)
+    }
+
+    $dirPath = Join-Path $repoRoot ".github/agents/$AgentName"
+    $parts = @()
+    $agentPath = Join-Path $dirPath "AGENT.md"
+    $promptPath = Join-Path $dirPath "PROMPT.md"
+
+    if (Test-Path $agentPath) {
+        $parts += (Get-Content -Raw -Path $agentPath)
+    }
+    if (Test-Path $promptPath) {
+        $parts += (Get-Content -Raw -Path $promptPath)
+    }
+    if ($parts.Count -gt 0) {
+        return ($parts -join "`n`n")
+    }
+
+    $available = (Get-AvailableAgents) -join ", "
+    throw "Agent profile not found for '$AgentName'. Available agents: $available"
+}
+
+function Resolve-SessionPath([string]$Name) {
+    Ensure-Directory $SessionDir
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        $Name = "session-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    }
+    return Join-Path $SessionDir "$Name.json"
+}
+
+function New-Session([string]$Name) {
+    return [ordered]@{
+        sessionName = $Name
+        repoRoot    = $repoRoot
+        createdAt   = (Get-Date).ToString("o")
+        updatedAt   = (Get-Date).ToString("o")
+        history     = @()
+        results     = @()
+    }
+}
+
+function Load-Session([string]$PathValue, [string]$FallbackName) {
+    if (Test-Path $PathValue) {
+        $loaded = Get-Content -Raw -Path $PathValue | ConvertFrom-Json -AsHashtable
+        if (-not $loaded.history) { $loaded.history = @() }
+        if (-not $loaded.results) { $loaded.results = @() }
+        return $loaded
+    }
+    return (New-Session $FallbackName)
+}
+
+function Save-Session([hashtable]$Session, [string]$PathValue) {
+    $Session.updatedAt = (Get-Date).ToString("o")
+    $Session | ConvertTo-Json -Depth 25 | Set-Content -Path $PathValue -Encoding utf8
+}
+
+function Get-Token {
+    if ($env:GITHUB_TOKEN) { return $env:GITHUB_TOKEN }
+    if ($env:GH_TOKEN) { return $env:GH_TOKEN }
     throw "Missing token. Set GITHUB_TOKEN (or GH_TOKEN) with GitHub Models access."
 }
 
-if ([string]::IsNullOrWhiteSpace($Endpoint)) {
-    if ($env:GITHUB_MODELS_ENDPOINT) {
-        $Endpoint = $env:GITHUB_MODELS_ENDPOINT
-    }
-    else {
-        $Endpoint = "https://models.inference.ai.azure.com/chat/completions"
-    }
+function Resolve-Endpoint([string]$InputEndpoint) {
+    if (-not [string]::IsNullOrWhiteSpace($InputEndpoint)) { return $InputEndpoint }
+    if ($env:GITHUB_MODELS_ENDPOINT) { return $env:GITHUB_MODELS_ENDPOINT }
+    return "https://models.inference.ai.azure.com/chat/completions"
 }
 
-$agentSpec = Get-Content -Raw -Path $agentFile
-
-# Strip YAML frontmatter for cleaner prompt body while preserving behavior text.
-$agentBody = $agentSpec
-if ($agentSpec.StartsWith("---")) {
-    $frontMatterEnd = [regex]::Match($agentSpec, "(?s)^---\r?\n.*?\r?\n---\r?\n")
-    if ($frontMatterEnd.Success) {
-        $agentBody = $agentSpec.Substring($frontMatterEnd.Length)
+function Convert-MessageContentToText($Content) {
+    if ($Content -is [System.Array]) {
+        return ($Content | ForEach-Object {
+                if ($_.text) { $_.text } else { $_ | ConvertTo-Json -Depth 10 }
+            }) -join "`n"
     }
+    return [string]$Content
 }
 
-$systemText = @"
-You are running the local repository agent profile '$Agent'.
+function Get-EditContractText {
+    return @"
+When code or file changes are needed, respond with JSON only. No prose outside JSON.
+
+JSON schema:
+{
+  "status": "success|pass|fail|error|repair-required|defer",
+  "summary": "short summary",
+  "output": "human-readable explanation",
+  "actions": [
+    {
+      "type": "write_file",
+      "path": "relative/path/from/repo/root",
+      "content": "full file content"
+    },
+    {
+      "type": "append_file",
+      "path": "relative/path/from/repo/root",
+      "content": "text to append"
+    },
+    {
+      "type": "replace_text",
+      "path": "relative/path/from/repo/root",
+      "oldText": "exact old text",
+      "newText": "replacement text",
+      "replaceAll": false
+    },
+    {
+      "type": "delete_file",
+      "path": "relative/path/from/repo/root"
+    }
+  ]
+}
+
+Rules:
+- Only use repository-relative paths.
+- Do not reference files outside the repo.
+- Use write_file when replacing an entire file.
+- Use replace_text only when oldText is exact and unique unless replaceAll is true.
+- If no edits are needed, return an empty actions array.
+"@
+}
+
+function Invoke-AgentCall([string]$AgentName, [string]$UserPrompt, [hashtable]$Session, [bool]$Writable) {
+    $agentBody = Get-AgentProfile $AgentName
+    $systemText = @"
+You are running the local repository agent profile '$AgentName'.
 Follow this profile as your governing instructions.
+Repository root: $repoRoot
 
 $agentBody
 "@
+    if ($Writable) {
+        $systemText += "`n`n$(Get-EditContractText)"
+    }
 
-$payload = @{
-    model       = $Model
-    messages    = @(
-        @{ role = "system"; content = $systemText },
-        @{ role = "user"; content = $Prompt }
+    $messages = @(@{ role = "system"; content = $systemText })
+    foreach ($entry in $Session.history) {
+        $messages += @{ role = $entry.role; content = $entry.content }
+    }
+    $messages += @{ role = "user"; content = $UserPrompt }
+
+    $payload = @{
+        model       = $Model
+        messages    = $messages
+        temperature = 0.4
+    } | ConvertTo-Json -Depth 25
+
+    $headers = @{
+        Authorization = "Bearer $(Get-Token)"
+        "Content-Type" = "application/json"
+    }
+
+    $response = Invoke-RestMethod -Method Post -Uri (Resolve-Endpoint $Endpoint) -Headers $headers -Body $payload
+    if ($null -eq $response.choices -or $response.choices.Count -eq 0) {
+        throw "No choices returned from endpoint."
+    }
+
+    return Convert-MessageContentToText $response.choices[0].message.content
+}
+
+function Strip-CodeFences([string]$Text) {
+    $value = $Text.Trim()
+    if ($value.StartsWith('```')) {
+        $value = [regex]::Replace($value, '^```[a-zA-Z0-9_-]*\s*', '')
+        $value = [regex]::Replace($value, '\s*```$', '')
+    }
+    return $value.Trim()
+}
+
+function Try-ParseJson([string]$Text) {
+    $candidate = Strip-CodeFences $Text
+    try {
+        return ($candidate | ConvertFrom-Json -AsHashtable)
+    }
+    catch {
+        return $null
+    }
+}
+
+function Resolve-RepoPath([string]$RelativePath) {
+    $root = [System.IO.Path]::GetFullPath($repoRoot)
+    $candidate = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $RelativePath))
+    $rootWithSlash = $root.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    $repoUri = [System.Uri]$rootWithSlash
+    $candidateUri = [System.Uri]$candidate
+    if (-not ($repoUri.IsBaseOf($candidateUri))) {
+        throw "Refusing to modify path outside repo: $RelativePath"
+    }
+    return $candidate
+}
+
+function Write-Utf8NoBom([string]$PathValue, [string]$Content, [bool]$AppendMode) {
+    $dir = Split-Path -Parent $PathValue
+    Ensure-Directory $dir
+    $encoding = New-Object System.Text.UTF8Encoding($false)
+    if ($AppendMode -and (Test-Path $PathValue)) {
+        $existing = Get-Content -Raw -Path $PathValue
+        [System.IO.File]::WriteAllText($PathValue, ($existing + $Content), $encoding)
+    }
+    else {
+        [System.IO.File]::WriteAllText($PathValue, $Content, $encoding)
+    }
+}
+
+function Apply-Actions($Actions) {
+    $applied = @()
+    foreach ($action in @($Actions)) {
+        $type = [string]$action.type
+        $targetPath = if ($action.path) { Resolve-RepoPath ([string]$action.path) } else { $null }
+
+        switch ($type) {
+            "write_file" {
+                Write-Utf8NoBom -PathValue $targetPath -Content ([string]$action.content) -AppendMode:$false
+                $applied += "write_file:$($action.path)"
+            }
+            "append_file" {
+                Write-Utf8NoBom -PathValue $targetPath -Content ([string]$action.content) -AppendMode:$true
+                $applied += "append_file:$($action.path)"
+            }
+            "replace_text" {
+                if (-not (Test-Path $targetPath)) {
+                    throw "replace_text target missing: $($action.path)"
+                }
+                $content = Get-Content -Raw -Path $targetPath
+                $oldText = [string]$action.oldText
+                $newText = [string]$action.newText
+                $replaceAll = $false
+                if ($null -ne $action.replaceAll) {
+                    $replaceAll = [bool]$action.replaceAll
+                }
+                $matchCount = ([regex]::Matches($content, [regex]::Escape($oldText))).Count
+                if ($matchCount -eq 0) {
+                    throw "replace_text oldText not found in $($action.path)"
+                }
+                if ((-not $replaceAll) -and ($matchCount -gt 1)) {
+                    throw "replace_text oldText matched multiple times in $($action.path)"
+                }
+                if ($replaceAll) {
+                    $updated = $content.Replace($oldText, $newText)
+                }
+                else {
+                    $index = $content.IndexOf($oldText, [System.StringComparison]::Ordinal)
+                    $updated = $content.Substring(0, $index) + $newText + $content.Substring($index + $oldText.Length)
+                }
+                Write-Utf8NoBom -PathValue $targetPath -Content $updated -AppendMode:$false
+                $applied += "replace_text:$($action.path)"
+            }
+            "delete_file" {
+                if (Test-Path $targetPath) {
+                    Remove-Item -Path $targetPath -Force
+                }
+                $applied += "delete_file:$($action.path)"
+            }
+            default {
+                throw "Unsupported action type: $type"
+            }
+        }
+    }
+    return $applied
+}
+
+function Get-Status([string]$Text, $Parsed) {
+    if ($Parsed -and $Parsed.status) {
+        return ([string]$Parsed.status).ToLowerInvariant()
+    }
+    $lower = $Text.ToLowerInvariant()
+    if ($lower -match 'pass/fail:\s*pass') { return 'pass' }
+    if ($lower -match 'pass/fail:\s*fail') { return 'fail' }
+    if ($lower -match '\bdefer\b') { return 'defer' }
+    return 'success'
+}
+
+function Expand-Template([string]$Text, [hashtable]$Variables) {
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $Text
+    }
+    $expanded = $Text
+    foreach ($key in $Variables.Keys) {
+        $expanded = $expanded.Replace("{{${key}}}", [string]$Variables[$key])
+    }
+    return $expanded
+}
+
+function Resolve-NextStep([hashtable]$Step, [string]$Status) {
+    $next = $null
+    if ($Step.on -and $Step.on.ContainsKey($Status)) {
+        $next = [string]$Step.on[$Status]
+    }
+    elseif ($Step.on -and $Step.on.ContainsKey("default")) {
+        $next = [string]$Step.on.default
+    }
+    return $next
+}
+
+function Invoke-DirectMode {
+    $resolvedSessionName = if ($SessionName) { $SessionName } else { "$Agent-$(Get-Date -Format 'yyyyMMdd-HHmmss')" }
+    $sessionPath = Resolve-SessionPath $resolvedSessionName
+    $session = Load-Session $sessionPath $resolvedSessionName
+    $resultText = Invoke-AgentCall -AgentName $Agent -UserPrompt $Prompt -Session $session -Writable:$AllowEdits
+    $parsed = if ($AllowEdits) { Try-ParseJson $resultText } else { $null }
+    if ($AllowEdits -and (-not $parsed)) {
+        throw "Edit mode requires JSON output matching the edit contract."
+    }
+    $status = Get-Status -Text $resultText -Parsed $parsed
+    $applied = @()
+    if ($parsed -and $parsed.actions) {
+        $applied = Apply-Actions $parsed.actions
+    }
+
+    $session.history += @(
+        @{ role = "user"; content = $Prompt; agent = $Agent; timestamp = (Get-Date).ToString("o") },
+        @{ role = "assistant"; content = $resultText; agent = $Agent; timestamp = (Get-Date).ToString("o") }
     )
-    temperature = 0.6
-} | ConvertTo-Json -Depth 10
+    $session.results += @{
+        agent   = $Agent
+        status  = $status
+        prompt  = $Prompt
+        applied = $applied
+        at      = (Get-Date).ToString("o")
+    }
+    Save-Session -Session $session -PathValue $sessionPath
 
-$headers = @{
-    "Authorization" = "Bearer $token"
-    "Content-Type"  = "application/json"
+    if ($Raw) {
+        [ordered]@{
+            sessionPath = $sessionPath
+            status      = $status
+            applied     = $applied
+            response    = if ($parsed) { $parsed } else { $resultText }
+        } | ConvertTo-Json -Depth 25
+        return
+    }
+
+    if ($parsed) {
+        if ($parsed.output) { $parsed.output }
+        elseif ($parsed.summary) { $parsed.summary }
+        else { $resultText }
+        if ($applied.Count -gt 0) {
+            "Applied actions: $($applied -join ', ')"
+        }
+    }
+    else {
+        $resultText
+    }
+    "Session: $sessionPath"
 }
 
-$response = Invoke-RestMethod -Method Post -Uri $Endpoint -Headers $headers -Body $payload
+function Invoke-SequenceMode {
+    $sequenceFullPath = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $SequencePath))
+    if (-not (Test-Path $sequenceFullPath)) {
+        throw "Sequence file not found: $SequencePath"
+    }
 
-if ($Raw) {
-    $response | ConvertTo-Json -Depth 10
-    exit 0
+    $sequence = Get-Content -Raw -Path $sequenceFullPath | ConvertFrom-Json -AsHashtable
+    $resolvedSessionName = if ($SessionName) { $SessionName } elseif ($sequence.sessionName) { [string]$sequence.sessionName } else { "sequence-$(Get-Date -Format 'yyyyMMdd-HHmmss')" }
+    $sessionPath = Resolve-SessionPath $resolvedSessionName
+    $session = Load-Session $sessionPath $resolvedSessionName
+
+    $variables = @{}
+    if ($sequence.variables) {
+        foreach ($key in $sequence.variables.Keys) {
+            $variables[$key] = [string]$sequence.variables[$key]
+        }
+    }
+    $variables.repoRoot = $repoRoot
+    $variables.sessionName = $resolvedSessionName
+
+    $steps = @($sequence.steps)
+    if ($steps.Count -eq 0) {
+        throw "Sequence file has no steps."
+    }
+
+    $indexById = @{}
+    for ($i = 0; $i -lt $steps.Count; $i++) {
+        if ($steps[$i].id) {
+            $indexById[[string]$steps[$i].id] = $i
+        }
+    }
+
+    $index = 0
+    $executed = 0
+    while ($index -lt $steps.Count) {
+        if ($executed -ge $MaxSteps) {
+            throw "Sequence exceeded MaxSteps=$MaxSteps"
+        }
+
+        $step = $steps[$index]
+        $executed++
+        $stepId = [string]$step.id
+
+        if ($step.parallel) {
+            $branches = @($step.parallel)
+            if ($branches.Count -eq 0) {
+                throw "Step '$stepId' has an empty parallel block."
+            }
+
+            $branchResults = @()
+            $preHistory = @($session.history)
+            foreach ($branch in $branches) {
+                $branchId = if ($branch.id) { [string]$branch.id } else { "branch-$($branchResults.Count + 1)" }
+                $branchAgent = [string]$branch.agent
+                $branchPrompt = Expand-Template -Text ([string]$branch.prompt) -Variables $variables
+                $branchSession = @{
+                    history = @($preHistory)
+                }
+                $branchText = Invoke-AgentCall -AgentName $branchAgent -UserPrompt $branchPrompt -Session $branchSession -Writable:$false
+                $branchParsed = Try-ParseJson $branchText
+                $branchStatus = Get-Status -Text $branchText -Parsed $branchParsed
+                $branchSummary = if ($branchParsed -and $branchParsed.summary) { [string]$branchParsed.summary } else { $branchStatus }
+                $branchOutput = if ($branchParsed -and $branchParsed.output) { [string]$branchParsed.output } else { $branchText }
+
+                $branchResults += @{
+                    id      = $branchId
+                    agent   = $branchAgent
+                    status  = $branchStatus
+                    summary = $branchSummary
+                    output  = $branchOutput
+                }
+            }
+
+            $aggregateStatus = "pass"
+            if ($branchResults.Where({ $_.status -eq "error" }).Count -gt 0) {
+                $aggregateStatus = "error"
+            }
+            elseif ($branchResults.Where({ $_.status -in @("fail", "defer", "repair-required") }).Count -gt 0) {
+                $aggregateStatus = "fail"
+            }
+            elseif ($branchResults.Where({ $_.status -in @("success", "pass") }).Count -eq 0) {
+                $aggregateStatus = "success"
+            }
+
+            $parallelJson = $branchResults | ConvertTo-Json -Depth 20
+            $session.results += @{
+                id       = $stepId
+                mode     = "parallel"
+                status   = $aggregateStatus
+                branches = $branchResults
+                at       = (Get-Date).ToString("o")
+            }
+            Save-Session -Session $session -PathValue $sessionPath
+
+            $variables.lastStatus = $aggregateStatus
+            $variables.lastSummary = "parallel:$aggregateStatus"
+            $variables.lastOutput = $parallelJson
+            $variables.parallelResultsJson = $parallelJson
+
+            $next = Resolve-NextStep -Step $step -Status $aggregateStatus
+            if ([string]::IsNullOrWhiteSpace($next) -or $next -eq "next") {
+                $index++
+            }
+            elseif ($next -eq "stop") {
+                break
+            }
+            elseif ($indexById.ContainsKey($next)) {
+                $index = $indexById[$next]
+            }
+            else {
+                throw "Unknown next step '$next' from step '$stepId'"
+            }
+            continue
+        }
+
+        $stepAgent = [string]$step.agent
+        $stepPrompt = Expand-Template -Text ([string]$step.prompt) -Variables $variables
+        $stepWritable = $false
+        if ($null -ne $step.allowEdits) {
+            $stepWritable = [bool]$step.allowEdits
+        }
+
+        try {
+            $resultText = Invoke-AgentCall -AgentName $stepAgent -UserPrompt $stepPrompt -Session $session -Writable:$stepWritable
+            $parsed = Try-ParseJson $resultText
+            if ($stepWritable -and (-not $parsed)) {
+                throw "Step '$stepId' requires JSON output matching the edit contract."
+            }
+            $status = Get-Status -Text $resultText -Parsed $parsed
+            $applied = @()
+            if ($parsed -and $parsed.actions) {
+                $applied = Apply-Actions $parsed.actions
+            }
+
+            $session.history += @(
+                @{ role = "user"; content = $stepPrompt; agent = $stepAgent; timestamp = (Get-Date).ToString("o") },
+                @{ role = "assistant"; content = $resultText; agent = $stepAgent; timestamp = (Get-Date).ToString("o") }
+            )
+            $session.results += @{
+                id      = $stepId
+                agent   = $stepAgent
+                status  = $status
+                prompt  = $stepPrompt
+                applied = $applied
+                at      = (Get-Date).ToString("o")
+            }
+            Save-Session -Session $session -PathValue $sessionPath
+
+            $variables.lastStatus = $status
+            $variables.lastOutput = if ($parsed -and $parsed.output) { [string]$parsed.output } else { $resultText }
+            $variables.lastSummary = if ($parsed -and $parsed.summary) { [string]$parsed.summary } else { $status }
+
+            $next = Resolve-NextStep -Step $step -Status $status
+
+            if ([string]::IsNullOrWhiteSpace($next) -or $next -eq "next") {
+                $index++
+            }
+            elseif ($next -eq "stop") {
+                break
+            }
+            elseif ($indexById.ContainsKey($next)) {
+                $index = $indexById[$next]
+            }
+            else {
+                throw "Unknown next step '$next' from step '$stepId'"
+            }
+        }
+        catch {
+            $session.results += @{
+                id     = $stepId
+                agent  = $stepAgent
+                status = "error"
+                prompt = $stepPrompt
+                error  = $_.Exception.Message
+                at     = (Get-Date).ToString("o")
+            }
+            Save-Session -Session $session -PathValue $sessionPath
+
+            $variables.lastStatus = "error"
+            $variables.lastOutput = $_.Exception.Message
+            $variables.lastSummary = "error"
+
+            $next = Resolve-NextStep -Step $step -Status "error"
+            else {
+                throw
+            }
+
+            if ($next -eq "stop") {
+                break
+            }
+            elseif ($next -eq "next") {
+                $index++
+            }
+            elseif ($indexById.ContainsKey($next)) {
+                $index = $indexById[$next]
+            }
+            else {
+                throw "Unknown error branch '$next' from step '$stepId'"
+            }
+        }
+    }
+
+    if ($Raw) {
+        [ordered]@{
+            sessionPath = $sessionPath
+            executed    = $executed
+            finalStatus = $variables.lastStatus
+            lastOutput  = $variables.lastOutput
+        } | ConvertTo-Json -Depth 25
+        return
+    }
+
+    "Final status: $($variables.lastStatus)"
+    if ($variables.lastOutput) {
+        $variables.lastOutput
+    }
+    "Session: $sessionPath"
 }
 
-if ($null -eq $response.choices -or $response.choices.Count -eq 0) {
-    throw "No choices returned from endpoint."
-}
-
-$content = $response.choices[0].message.content
-if ($content -is [System.Array]) {
-    ($content | ForEach-Object {
-        if ($_.text) { $_.text } else { $_ | ConvertTo-Json -Depth 5 }
-    }) -join "`n"
+if (-not [string]::IsNullOrWhiteSpace($SequencePath)) {
+    Invoke-SequenceMode
 }
 else {
-    $content
+    Invoke-DirectMode
 }

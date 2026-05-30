@@ -49,6 +49,8 @@ procedural sound. No build step, no backend, no frameworks.
 You can run repository agent prompts from terminal using:
 
 - `scripts/run-agent-chat.ps1`
+- `scripts/examples/recover-sequence.json`
+- `scripts/examples/parallel-fanout-sequence.json`
 
 Set a token first:
 
@@ -59,11 +61,19 @@ Example calls:
 - `pwsh ./scripts/run-agent-chat.ps1 -Agent exploration-operator -Prompt "Propose 3 improvements for onboarding readability."`
 - `pwsh ./scripts/run-agent-chat.ps1 -Agent expressive-chaos-explorer -Prompt "Generate 5 high-novelty happy-hardcore event trajectories."`
 - `pwsh ./scripts/run-agent-chat.ps1 -Agent governance-auditor -Prompt "Audit current repo state with Intent -> Admissibility -> Coverage -> Integrity -> Evidence -> Stop/Recover."`
+- `pwsh ./scripts/run-agent-chat.ps1 -Agent exploration-operator -Prompt "Implement the requested fix in index.html." -AllowEdits -SessionName feature-fix`
+- `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/recover-sequence.json -SessionName recover-demo`
+- `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/parallel-fanout-sequence.json -SessionName fanout-demo`
 
 Notes:
 
 - This script runs against a chat completions endpoint and applies your local `.agent.md` instructions as system prompt context.
 - It does not invoke VS Code's internal subagent runtime directly.
+- Sessions persist to `.agent-sessions/<name>.json` and are replayed as conversation history on later calls.
+- `-AllowEdits` lets the called agent return structured local file actions (`write_file`, `append_file`, `replace_text`, `delete_file`) that the script applies inside the repo.
+- `-SequencePath` runs a JSON-defined multi-step workflow with conditional branching on `pass`, `fail`, `error`, `defer`, or `repair-required`.
+- The included recover sequence shows how to route `explore -> implement -> audit -> recover -> audit` automatically.
+- Sequence steps can also define a `parallel` array for fan-out exploration; results are aggregated into `{{parallelResultsJson}}` for downstream merge prompts.
 - Override endpoint/model with `-Endpoint` and `-Model` if needed.
 
 ## Camera Profile
