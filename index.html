@@ -259,7 +259,7 @@
       baseZ: 7.5, zByH: 2.1,
       laneFollow: 0.5, sideBias: 0,
       followX: 6, followYZ: 4,
-      lookX: 0.35, lookYBase: 0.6, lookYByH: 0.95, lookZ: -8,
+      lookX: 0.35, lookSideBias: 0, lookYBase: 0.6, lookYByH: 0.95, lookZ: -8,
       shakeScale: 0.9,
     },
     cute34: {
@@ -269,12 +269,23 @@
       baseZ: 8.6, zByH: 2.45,
       laneFollow: 0.35, sideBias: 1.2,
       followX: 5.2, followYZ: 3.4,
-      lookX: 0.22, lookYBase: 0.85, lookYByH: 1.02, lookZ: -6.2,
+      lookX: 0.22, lookSideBias: 0, lookYBase: 0.85, lookYByH: 1.02, lookZ: -6.2,
       shakeScale: 0.62,
+    },
+    diag34: {
+      fov: 52,
+      start: [5.8, 7.2, 13.4],
+      baseY: 3.5, yByH: 2.1,
+      baseZ: 9.8, zByH: 2.5,
+      laneFollow: 0.15, sideBias: 5.0,
+      followX: 4.3, followYZ: 3.0,
+      lookX: 0.1, lookSideBias: -1.9, lookYBase: 0.9, lookYByH: 1.06, lookZ: -12.5,
+      shakeScale: 0.55,
     },
   };
   let activeCameraKey = 'cute34';
   let ACTIVE_CAMERA = CAMERA_PROFILES[activeCameraKey];
+  const CAMERA_ORDER = ['classic', 'cute34', 'diag34'];
 
   const POS_OPS = [
     { txt: '+3', fn: p => p + 3 }, { txt: '+5', fn: p => p + 5 },
@@ -305,7 +316,11 @@
     goBest: $('go-best'), goNewBest: $('go-newbest'),
   };
 
-  function cameraLabel(k) { return k === 'classic' ? 'CLASSIC' : 'CUTE 3/4'; }
+  function cameraLabel(k) {
+    if (k === 'classic') return 'CLASSIC';
+    if (k === 'diag34') return 'DIAG 3/4';
+    return 'CUTE 3/4';
+  }
   function syncCameraLabel() { els.camMode.textContent = `CAM: ${cameraLabel(activeCameraKey)}`; }
 
   // ----------------------------- audio --------------------------------
@@ -936,7 +951,9 @@
     syncCameraLabel();
   }
   function toggleCameraProfile() {
-    setCameraProfile(activeCameraKey === 'cute34' ? 'classic' : 'cute34');
+    const i = CAMERA_ORDER.indexOf(activeCameraKey);
+    const next = CAMERA_ORDER[(i + 1 + CAMERA_ORDER.length) % CAMERA_ORDER.length];
+    setCameraProfile(next);
     audio.ui();
     floatText(cameraLabel(activeCameraKey), '#ffce3a');
   }
@@ -1165,7 +1182,7 @@
       camera.position.x += rand(-s, s); camera.position.y += rand(-s, s);
     }
     const lookY = cp.lookYBase + hs * cp.lookYByH;
-    camera.lookAt(runner.group.position.x * cp.lookX, lookY, cp.lookZ);
+    camera.lookAt(runner.group.position.x * cp.lookX + cp.lookSideBias, lookY, cp.lookZ);
 
     // hit flash via fog/sky tint — always lerps back to base so nothing lingers
     G.hitFlash = Math.max(0, G.hitFlash - dt * 3);

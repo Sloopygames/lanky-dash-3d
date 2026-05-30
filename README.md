@@ -40,7 +40,8 @@ procedural sound. No build step, no backend, no frameworks.
 ## Camera Profile
 
 The camera now uses named profiles in `index.html` under `CAMERA_PROFILES`.
-Set `ACTIVE_CAMERA` to switch styles quickly:
+Press `C` (or tap the top-right `C` button) to cycle through all views:
 
-- `CAMERA_PROFILES.cute34` for the new cute 3/4 perspective (default).
 - `CAMERA_PROFILES.classic` for the original chase-camera framing.
+- `CAMERA_PROFILES.cute34` for the cute 3/4 perspective (default).
+- `CAMERA_PROFILES.diag34` for a stronger diagonal 3/4 framing.
