@@ -375,12 +375,20 @@
   const MAX_SPEED = 36;
   const START_POWER = 6;
   const OVERCHARGE_POWER = 52;
+  const STYLE_SEGMENT = 520;
+  const STYLE_BLEND_DIST = 150;
+  const RARE_P0 = 0.18;
+  const RARE_RATIO = 0.42;
+  const RARE_CHECK_INTERVAL = 2.2;
+  const RARE_T3_COOLDOWN = 8;
+  const RARE_T4_PITY = 42;
 
   const BIOMES = [
-    { name: 'MEADOW', sky: 0x6ec6ff, fog: 0xbfe6ff, ground: 0x67d59a, rail: 0xffffff },
-    { name: 'SUNSET', sky: 0xffab78, fog: 0xffcfab, ground: 0xb6cf6f, rail: 0xfff1da },
-    { name: 'NIGHTCITY', sky: 0x1e2a5f, fog: 0x3b4e8a, ground: 0x3a8f72, rail: 0xa3e7ff },
-    { name: 'CANDY', sky: 0xff9fce, fog: 0xffcee5, ground: 0x8fdc9d, rail: 0xffffff },
+    { name: 'CARNIVAL RAVE', sky: 0x4ec8ff, fog: 0x9be7ff, ground: 0x67d59a, rail: 0xffffff, post: 0xff4d8d, gatePos: 0x38e07b, gateNeg: 0xff4d6d },
+    { name: 'TOYBOX CLAY', sky: 0xffc082, fog: 0xffddbe, ground: 0xb6cf6f, rail: 0xfff2df, post: 0xff9e72, gatePos: 0x5ddc96, gateNeg: 0xff7f73 },
+    { name: 'NEO ARCADE', sky: 0x132651, fog: 0x3957a2, ground: 0x3a8f72, rail: 0x9ee9ff, post: 0x7cf2f0, gatePos: 0x63ffcc, gateNeg: 0xff6385 },
+    { name: 'INK COMIC', sky: 0xf7f2de, fog: 0xd8d2c4, ground: 0x8ea381, rail: 0xffffff, post: 0x2a2a2a, gatePos: 0x32c96b, gateNeg: 0xd64646 },
+    { name: 'BUBBLEGUM MECHA', sky: 0xff9bce, fog: 0xffcfe7, ground: 0x8fdc9d, rail: 0xffffff, post: 0xb58bff, gatePos: 0x7aff8f, gateNeg: 0xff5f92 },
   ];
 
   const CAMERA_PROFILES = {
@@ -447,6 +455,13 @@
   const choice = arr => arr[randi(arr.length)];
   const clamp = THREE.MathUtils.clamp;
   const lerp = THREE.MathUtils.lerp;
+  const _tmpColorA = new THREE.Color();
+  const _tmpColorB = new THREE.Color();
+  function lerpHex(a, b, t) {
+    _tmpColorA.setHex(a);
+    _tmpColorB.setHex(b);
+    return _tmpColorA.lerp(_tmpColorB, clamp(t, 0, 1)).getHex();
+  }
 
   // ----------------------------- DOM ----------------------------------
   const $ = id => document.getElementById(id);
@@ -531,31 +546,53 @@
       const step = () => {
         if (!this.musicOn || !this.ctx) return;
         const t = this.ctx.currentTime;
-        const scale = [0, 3, 5, 7, 10, 12];
-        const root = 196; // G3
-        const b = this._beat % 16;
-        // bass
+        const bpm = clamp(172 + ((G?.speed || BASE_SPEED) - BASE_SPEED) * 0.7 + (G?.stylePulse || 0) * 7, 168, 178);
+        const beatMs = 60000 / (bpm * 4); // 16th note grid
+        const b = this._beat % 32;
+        const root = 174; // F3
+        const chord = [0, 4, 7, 11];
+
+        // four-on-the-floor kick
         if (b % 4 === 0) {
-          const bf = root * Math.pow(2, [0, 0, 5, 3][(this._beat / 4 | 0) % 4] / 12) / 2;
-          const o = this.ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = bf;
-          const g = this.ctx.createGain();
-          g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.12, t + 0.02);
-          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
-          const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600;
-          o.connect(lp); lp.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.5);
+          const k = this.ctx.createOscillator();
+          k.type = 'sine';
+          k.frequency.setValueAtTime(148, t);
+          k.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+          this._env(k, t, 0.16, 0.45);
+          k.start(t); k.stop(t + 0.2);
         }
-        // arp pluck
+        // offbeat hats
+        if (b % 4 === 2) this.noise(0.06, 7600, 0.13, 'highpass');
+
+        // rolling bass
         if (b % 2 === 0) {
-          const f = root * Math.pow(2, scale[(this._beat * 3) % scale.length] / 12);
-          const o = this.ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+          const note = root * Math.pow(2, [0, 0, 3, 5][(this._beat / 8 | 0) % 4] / 12);
+          const o = this.ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = note / 2;
+          const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520;
           const g = this.ctx.createGain();
-          g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.05, t + 0.01);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.linearRampToValueAtTime(0.1, t + 0.01);
           g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
-          o.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.2);
+          o.connect(lp); lp.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.22);
+        }
+
+        // bright happy-hardcore lead stabs
+        if (b % 8 === 0 || b % 8 === 4) {
+          for (let i = 0; i < 3; i++) {
+            const det = 1 + (i - 1) * 0.008;
+            const f = root * det * Math.pow(2, chord[(this._beat / 4 + i) % chord.length] / 12);
+            const o = this.ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+            this._env(o, t, 0.22, 0.05);
+            o.start(t); o.stop(t + 0.24);
+          }
+        }
+
+        // boss prelude snare lift
+        if (G?.bossActive && b % 4 === 3) {
+          this.noise(0.08, 2800 + (b % 16) * 260, 0.18, 'bandpass');
         }
         this._beat++;
-        const pace = 160 - clamp((G?.speed || BASE_SPEED) - BASE_SPEED, 0, 16) * 3;
-        this._timer = setTimeout(step, pace);
+        this._timer = setTimeout(step, beatMs);
       };
       step();
     }
@@ -730,7 +767,7 @@
     g.lane = lane; g.op = op; g.applied = false;
     g.group.position.set(LANE_X[lane], 0, SPAWN_Z);
     const positive = POS_OPS.includes(op) || VOLATILE_OPS.includes(op);
-    const col = positive ? 0x38e07b : 0xff4d6d;
+    const col = styleGateColor(positive);
     const emi = positive ? 0x0c3a1c : 0x3a0c12;
     g.panelMat.color.setHex(col); g.panelMat.emissive.setHex(emi);
     g.postMat.color.setHex(col); g.postMat.emissive.setHex(emi);
@@ -972,6 +1009,7 @@
     quality: 'high',
     collisions: { hazard: 0, bossFail: 0 },
     rowsByType: {},
+    rareTierHits: [0, 0, 0, 0, 0, 0],
   };
 
   const missionPool = [
@@ -1004,6 +1042,10 @@
     bossTelegraph: 0,
     bossDodgeWindow: 0,
     bossDodged: false,
+    stylePulse: 0,
+    rareTimer: 0,
+    rareCooldown: 0,
+    rareDrought: 0,
   };
   G.best = SAVE.best || 0;
 
@@ -1063,17 +1105,112 @@
     savePersist();
   }
 
-  function applyBiome(i) {
-    const b = BIOMES[i % BIOMES.length];
-    G.biomeIndex = i % BIOMES.length;
-    C_SKY.setHex(b.sky);
-    C_FOG.setHex(b.fog);
+  function styleMixAtDistance(distance) {
+    const segIdx = Math.floor(distance / STYLE_SEGMENT);
+    const baseIdx = segIdx % BIOMES.length;
+    const local = distance % STYLE_SEGMENT;
+    const nextIdx = (baseIdx + 1) % BIOMES.length;
+    const blend = local > STYLE_SEGMENT - STYLE_BLEND_DIST
+      ? (local - (STYLE_SEGMENT - STYLE_BLEND_DIST)) / STYLE_BLEND_DIST
+      : 0;
+    return { baseIdx, nextIdx, blend };
+  }
+
+  function applyBiomeAtDistance(distance) {
+    const mix = styleMixAtDistance(distance);
+    const a = BIOMES[mix.baseIdx];
+    const b = BIOMES[mix.nextIdx];
+    G.biomeIndex = mix.baseIdx;
+    C_SKY.setHex(lerpHex(a.sky, b.sky, mix.blend));
+    C_FOG.setHex(lerpHex(a.fog, b.fog, mix.blend));
     scene.background.copy(C_SKY);
     scene.fog.color.copy(C_FOG);
-    trackTex.needsUpdate = true;
-    railMat.color.setHex(b.rail);
-    rails.forEach(r => r.material.color.setHex(b.rail));
-    $('cam-mode').textContent = `CAM: ${cameraLabel(activeCameraKey)} • ${b.name}`;
+    railMat.color.setHex(lerpHex(a.rail, b.rail, mix.blend));
+    rails.forEach(r => r.material.color.copy(railMat.color));
+    postMat.color.setHex(lerpHex(a.post, b.post, mix.blend));
+    const styleLabel = mix.blend > 0.01 ? `${a.name} → ${b.name}` : a.name;
+    $('cam-mode').textContent = `CAM: ${cameraLabel(activeCameraKey)} • ${styleLabel}`;
+  }
+
+  function styleGateColor(isPositive) {
+    const mix = styleMixAtDistance(G.distance);
+    const a = BIOMES[mix.baseIdx];
+    const b = BIOMES[mix.nextIdx];
+    const from = isPositive ? a.gatePos : a.gateNeg;
+    const to = isPositive ? b.gatePos : b.gateNeg;
+    return lerpHex(from, to, mix.blend);
+  }
+
+  function maybeTriggerRareEvent(dtEff) {
+    if (G.state !== STATE.RUN || G.paused || G.freeze > 0) return;
+    G.rareTimer -= dtEff;
+    G.rareDrought += dtEff;
+    G.rareCooldown = Math.max(0, G.rareCooldown - dtEff);
+    if (G.rareTimer > 0) return;
+    G.rareTimer = RARE_CHECK_INTERVAL + random() * 0.8;
+
+    const probs = [];
+    for (let i = 0; i <= 5; i++) probs[i] = RARE_P0 * Math.pow(RARE_RATIO, i);
+    let tier = -1;
+    for (let i = 5; i >= 0; i--) {
+      if (random() < probs[i]) { tier = i; break; }
+    }
+    if (tier < 0) return;
+
+    const inTransition = (G.distance % STYLE_SEGMENT) > (STYLE_SEGMENT - STYLE_BLEND_DIST);
+    if (G.rareCooldown > 0 && tier >= 3) tier = 2;
+    if (inTransition && tier >= 3) tier = 2;
+    if (G.rareDrought > RARE_T4_PITY && tier < 4 && random() < 0.35) tier = 4;
+
+    telemetry.rareTierHits[tier] = (telemetry.rareTierHits[tier] || 0) + 1;
+    G.rareDrought = 0;
+    G.stylePulse = Math.max(G.stylePulse, 0.22 + tier * 0.1);
+
+    const rp = runner.group.position;
+    if (tier === 0) {
+      burst(rp.x + rand(-1.2, 1.2), 1.8, rp.z - 2, 0xffffff, 8, 0.7);
+      floatText('DETAIL+', '#ffffff');
+      G.score += 6;
+    } else if (tier === 1) {
+      for (let i = 0; i < 2; i++) burst(rand(-3, 3), rand(1.2, 3.2), rp.z - 8 - i * 2, 0xffce3a, 12, 1.0);
+      floatText('CONFETTI!', '#ffce3a');
+      G.score += 16;
+    } else if (tier === 2) {
+      G.combo = Math.min(24, G.combo + 2);
+      G.comboMult = 1 + G.combo * 0.06;
+      if (!G.shield && random() < 0.35) G.shield = true;
+      burst(rp.x, 2.2, rp.z - 1, 0x5ce8ff, 18, 1.2);
+      floatText('LUCKY SPIKE', '#7cf2f0');
+      G.score += 28;
+    } else if (tier === 3) {
+      G.rareCooldown = RARE_T3_COOLDOWN;
+      for (let i = 0; i < 4; i++) burst(rand(-4, 4), rand(1.4, 4.5), rp.z - 10 - i * 4, 0xff7df0, 18, 1.4);
+      G.shake = Math.max(G.shake, 0.45);
+      G.slowmo = Math.min(G.slowmo, 0.85);
+      floatText('RAVE FIREWORKS!', '#ff7df0');
+      G.score += 48;
+      audio.cheer();
+    } else if (tier === 4) {
+      G.rareCooldown = RARE_T3_COOLDOWN + 3;
+      for (let i = 0; i < 6; i++) burst(rand(-5, 5), rand(1.2, 6), rp.z - 12 - i * 3, 0xff5f92, 22, 1.8);
+      G.power += 4;
+      G.shield = true;
+      G.shake = Math.max(G.shake, 0.6);
+      floatText('ULTRA BURST!', '#ff5f92');
+      G.score += 80;
+      audio.smash();
+    } else {
+      G.rareCooldown = RARE_T3_COOLDOWN + 5;
+      for (let i = 0; i < 9; i++) burst(rand(-6, 6), rand(1.2, 7), rp.z - 14 - i * 3.2, 0xffffff, 26, 2.1);
+      G.power += 7;
+      G.combo = Math.min(26, G.combo + 4);
+      G.comboMult = 1 + G.combo * 0.06;
+      G.shield = true;
+      G.shake = Math.max(G.shake, 0.8);
+      floatText('MYTHIC SKYBREAK!', '#ffffff');
+      G.score += 130;
+      audio.smash();
+    }
   }
 
   function dateSeed() {
@@ -1109,10 +1246,15 @@
     G.bossActive = false; G.freeze = 0;
     G.shield = false; G.combo = 0; G.comboMult = 1; G.overcharge = false;
     G.volatileTimer = 0;
+    G.stylePulse = 0;
+    G.rareTimer = 0;
+    G.rareCooldown = 0;
+    G.rareDrought = 0;
     G.missionState = { gates: 0, mults: 0, cleanDist: 0, boss: 0, swaps: 0, volatile: 0 };
     G.starsRun = 0;
     telemetry.collisions = { hazard: 0, bossFail: 0 };
     telemetry.rowsByType = {};
+    telemetry.rareTierHits = [0, 0, 0, 0, 0, 0];
     runner.group.position.set(LANE_X[1], 0, 0);
     els.bossBanner.classList.remove('show');
     const daily = dateSeed();
@@ -1126,7 +1268,7 @@
       SAVE.daily = { date: daily.key, best: 0, seed: daily.seed };
       savePersist();
     }
-    applyBiome(0);
+    applyBiomeAtDistance(0);
     updateHud();
   }
 
@@ -1706,8 +1848,8 @@
       G.speed = Math.min(MAX_SPEED, BASE_SPEED + G.distance * 0.012);
       if (G.overcharge) G.score += eff * 3.2;
       if (G.volatileTimer > 0) G.volatileTimer -= eff;
-      const biomeIdx = Math.floor(G.distance / 520) % BIOMES.length;
-      if (biomeIdx !== G.biomeIndex) applyBiome(biomeIdx);
+      G.stylePulse = Math.max(0, G.stylePulse - eff * 0.7);
+      applyBiomeAtDistance(G.distance);
       // spawn rows
       G.rowZacc += scroll;
       while (G.rowZacc >= ROW_SPACING) { G.rowZacc -= ROW_SPACING; spawnRow(); }
@@ -1716,6 +1858,7 @@
         G.bossMeter -= eff * speed;
         if (G.bossMeter <= 0) spawnBoss();
       }
+      maybeTriggerRareEvent(eff);
       missionProgressTick();
     }
 
@@ -1866,6 +2009,7 @@
         `dist:${Math.floor(G.distance)} power:${G.power.toFixed(1)} combo:${G.combo} x${G.comboMult.toFixed(2)}`,
         `boss:${G.bossIndex} need:${Math.round(boss.need || G.bossThreshold)} dodged:${G.bossDodged}`,
         `hazHits:${telemetry.collisions.hazard} bossFail:${telemetry.collisions.bossFail}`,
+        `rare t0:${telemetry.rareTierHits[0]} t1:${telemetry.rareTierHits[1]} t2:${telemetry.rareTierHits[2]} t3:${telemetry.rareTierHits[3]} t4:${telemetry.rareTierHits[4]} t5:${telemetry.rareTierHits[5]}`,
         `rows ${topRows}`,
       ].join('\n');
     }
