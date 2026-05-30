@@ -25,11 +25,17 @@ bosses explode.
 
 - Procedural endless track that speeds up the further you get.
 - `+`, `×`, `−`, `÷` gates with real route-choice tension.
+- Volatile high-reward gates, shield pickups, and overcharge risk/reward.
 - Auto-smash bosses with escalating POWER thresholds.
+- Multi-pattern bosses with telegraphed dodge windows.
 - Squash-and-stretch growth, particle bursts, screen shake, hit-pause and slow-mo.
+- Combo multiplier, mission cards, and achievement/meta stars.
+- Biome progression with adaptive difficulty pacing and deterministic daily-seed mode.
+- Adaptive quality scaling and in-game debug telemetry overlay.
 - Procedural Web Audio music and SFX with a mute toggle.
 - Desktop keyboard + mouse and full mobile touch support.
-- Best score saved locally.
+- Touch settings (drag/swipe, dead-zone), handedness toggle, cosmetics, and local save migration.
+- Best score + daily challenge best saved locally with share text support.
 
 ## Tech
 
