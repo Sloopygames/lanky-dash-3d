@@ -17,7 +17,7 @@ bosses explode.
   screen (swipe on mobile).
 - **Start / Retry:** `Space`, `Enter`, click, or tap.
 - **Pause:** `P` or `Esc`.
-- **Camera:** `C` toggles between Classic and Cute 3/4 views.
+- **Camera:** `C` or the `C` button (top-right) toggles Classic/Cute 3/4 views.
 - **Mute:** `M` or the speaker button (top-right).
 - **Fullscreen:** the expand button (top-right).
 

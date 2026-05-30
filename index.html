@@ -88,6 +88,7 @@
   .icon-btn:hover { background: rgba(0,0,0,.66); }
   #sg-fs-btn { right: 8px; }
   #mute-btn  { right: 40px; font-size: 15px; }
+  #cam-btn   { right: 72px; font-size: 13px; font-weight: 700; }
   #cam-mode {
     top: 40px; right: 10px;
     font-size: 11px; letter-spacing: .06em;
@@ -172,6 +173,7 @@
   <div id="floats"></div>
 
   <!-- top-right buttons -->
+  <button id="cam-btn" class="icon-btn" aria-label="Toggle camera perspective" title="Camera">C</button>
   <button id="mute-btn" class="icon-btn" aria-label="Toggle sound" title="Sound">🔊</button>
   <button id="sg-fs-btn" class="icon-btn" aria-label="Toggle fullscreen" title="Fullscreen">
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"></svg>
@@ -988,6 +990,9 @@
   $('retry-btn').addEventListener('click', () => { audio.ui(); startGame(); });
   $('resume-btn').addEventListener('click', () => { audio.ui(); togglePause(); });
 
+  const camBtn = $('cam-btn');
+  camBtn.addEventListener('click', e => { e.stopPropagation(); toggleCameraProfile(); });
+
   const muteBtn = $('mute-btn');
   function toggleMute() {
     audio.ensure();
@@ -1016,7 +1021,7 @@
   document.addEventListener('webkitfullscreenchange', syncFsIcon);
   // the top-right buttons sit beside the canvas, not inside it, so steering never sees
   // their pointer events — but guard defensively so a future refactor can't regress it.
-  for (const b of [muteBtn, fsBtn]) {
+  for (const b of [camBtn, muteBtn, fsBtn]) {
     b.addEventListener('pointerdown', e => e.stopPropagation());
     b.addEventListener('pointerup', e => e.stopPropagation());
   }
