@@ -51,6 +51,7 @@ You can run repository agent prompts from terminal using:
 - `scripts/run-agent-chat.ps1`
 - `scripts/examples/recover-sequence.json`
 - `scripts/examples/parallel-fanout-sequence.json`
+- `scripts/examples/autonomous-parallel-5-iterations.json`
 
 Set a token first:
 
@@ -64,6 +65,7 @@ Example calls:
 - `pwsh ./scripts/run-agent-chat.ps1 -Agent exploration-operator -Prompt "Implement the requested fix in index.html." -AllowEdits -SessionName feature-fix`
 - `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/recover-sequence.json -SessionName recover-demo`
 - `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/parallel-fanout-sequence.json -SessionName fanout-demo`
+- `pwsh ./scripts/run-agent-chat.ps1 -SequencePath ./scripts/examples/autonomous-parallel-5-iterations.json -SessionName autonomous-gdd-v1 -MaxSteps 80`
 
 Notes:
 
@@ -74,6 +76,7 @@ Notes:
 - `-SequencePath` runs a JSON-defined multi-step workflow with conditional branching on `pass`, `fail`, `error`, `defer`, or `repair-required`.
 - The included recover sequence shows how to route `explore -> implement -> audit -> recover -> audit` automatically.
 - Sequence steps can also define a `parallel` array for fan-out exploration; results are aggregated into `{{parallelResultsJson}}` for downstream merge prompts.
+- The autonomous 5-iteration sequence enforces at least five full cycles of `parallel explore -> merge -> implement -> audit` without human interaction, then defers only unresolved human-irreducible blockers.
 - Override endpoint/model with `-Endpoint` and `-Model` if needed.
 
 ## Camera Profile
