@@ -65,3 +65,4 @@ For execution closure of S1 runtime metrics, create:
 
 Status update:
 - created and ready for data capture.
+- human approval received; deferred human gate cleared.

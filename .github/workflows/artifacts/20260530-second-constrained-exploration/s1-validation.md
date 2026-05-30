@@ -4,6 +4,12 @@ Task id: 20260530-second-constrained-exploration
 Pack: S1 (A1 Pressure Crescendo, B1 Route Signaling 2.0, C1 Variant Deck Rotation)
 Status: In progress
 
+## Approval Receipt
+
+- Human approval received: 2026-05-30.
+- Effect: deferred human gate is cleared for continuing automation and evidence capture.
+- Note: promotion remains metric-gated; threshold tables must still be populated.
+
 ## Implementation Evidence (Current)
 
 Recent implementation commits relevant to S1 evidence capture:
@@ -106,7 +112,7 @@ Attach or link:
 
 ## Sign-off
 
-- Gameplay: TBD
+- Gameplay: Approved (human), pending metric packet attachment
 - Runtime: TBD
 - UX: TBD
 - Governance: TBD
