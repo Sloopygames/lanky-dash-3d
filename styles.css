@@ -1,0 +1,7 @@
+.action-feedback {
+    transition: background-color 0.3s ease;
+}
+
+.action-feedback.active {
+    background-color: yellow; /* Highlighting effect */
+}

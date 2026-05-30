@@ -2706,4 +2706,32 @@
   </script>
 </body>
 
-</html>
+</html><script>
+// New Dash Mechanic Implementation
+let isDashing = false;
+const dashDuration = 300; // duration of dash in milliseconds
+
+function dash() {
+    if (!isDashing) {
+        isDashing = true;
+        player.velocity.x *= 2; // double the speed in the current direction
+        setTimeout(() => {
+            player.velocity.x /= 2; // reset speed after dash
+            isDashing = false;
+        }, dashDuration);
+    }
+}
+
+// Event listener for dash action
+window.addEventListener('keydown', (event) => {
+    if (event.code === 'Space') { // assuming space is the dash key
+        dash();
+    }
+});
+</script><script src="path/to/power-up.js"></script><script src="path/to/obstacle-course.js"></script>
+<script src="path/to/time-manipulation.js"></script>
+<script src="path/to/hud.js"></script>
+<script src="path/to/sound-effects.js"></script><script src="path/to/environmental-hazards.js"></script>
+<script src="path/to/power-slide.js"></script>
+<script src="path/to/hazard-indicators.js"></script>
+<script src="path/to/sound-effects.js"></script><script src="path/to/dash-ability.js"></script>
