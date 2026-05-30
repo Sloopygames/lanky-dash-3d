@@ -3,8 +3,8 @@ param(
     [string]$Prompt,
     [string]$Model = "gpt-4o-mini",
     [string]$Endpoint = "",
-    [ValidateSet("api", "cli")]
-    [string]$Backend = "api",
+    [ValidateSet("auto", "api", "cli")]
+    [string]$Backend = "auto",
     [string]$CliCommand = "copilot",
     [string[]]$CliArgs = @(),
     [ValidateSet("stdin", "arg")]
@@ -24,6 +24,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+$script:ResolvedBackend = "api"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($SessionDir)) {
@@ -54,6 +56,27 @@ function Write-Live([string]$Message) {
         Write-Host "[$ts] $Message"
     }
 }
+
+function Resolve-Backend {
+    if ($Backend -eq "api") {
+        $script:ResolvedBackend = "api"
+        return
+    }
+    if ($Backend -eq "cli") {
+        $script:ResolvedBackend = "cli"
+        return
+    }
+
+    $cmd = Get-Command $CliCommand -ErrorAction SilentlyContinue
+    if ($cmd) {
+        $script:ResolvedBackend = "cli"
+    }
+    else {
+        $script:ResolvedBackend = "api"
+    }
+}
+
+Resolve-Backend
 
 function Truncate-Text([string]$Text, [int]$MaxChars) {
     if ([string]::IsNullOrEmpty($Text)) { return $Text }
@@ -284,7 +307,7 @@ $agentBody
     $messages += @{ role = "user"; content = $UserPrompt }
 
     $label = if ([string]::IsNullOrWhiteSpace($ContextLabel)) { $AgentName } else { "${ContextLabel}:${AgentName}" }
-    if ($Backend -eq "cli") {
+    if ($script:ResolvedBackend -eq "cli") {
         $cliPrompt = @{
             messages = $messages
             model = $Model
