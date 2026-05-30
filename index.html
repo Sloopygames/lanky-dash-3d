@@ -88,6 +88,14 @@
   .icon-btn:hover { background: rgba(0,0,0,.66); }
   #sg-fs-btn { right: 8px; }
   #mute-btn  { right: 40px; font-size: 15px; }
+  #cam-mode {
+    top: 40px; right: 10px;
+    font-size: 11px; letter-spacing: .06em;
+    background: rgba(0,0,0,.38);
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 999px;
+    padding: 3px 8px;
+  }
 
   /* ---------- overlays ---------- */
   .overlay {
@@ -155,6 +163,7 @@
       <div class="dist"><span id="dist">0</span> m</div>
       <div class="score">SCORE <span id="score">0</span></div>
     </div>
+    <div id="cam-mode" class="hud-chip">CAM: CUTE 3/4</div>
     <div id="boss-banner">
       <div class="b1">⚠ BOSS</div>
       <div class="b2">need POWER <span id="boss-need">0</span></div>
@@ -184,7 +193,7 @@
       </div>
       <button id="play-btn" class="btn">PLAY</button>
       <div class="best">Best: <span id="menu-best">0</span></div>
-      <div class="hint">← → / A D / tap or drag &nbsp;·&nbsp; P pause</div>
+      <div class="hint">← → / A D / tap or drag &nbsp;·&nbsp; P pause &nbsp;·&nbsp; C camera</div>
     </div>
   </div>
 
@@ -262,7 +271,8 @@
       shakeScale: 0.62,
     },
   };
-  const ACTIVE_CAMERA = CAMERA_PROFILES.cute34;
+  let activeCameraKey = 'cute34';
+  let ACTIVE_CAMERA = CAMERA_PROFILES[activeCameraKey];
 
   const POS_OPS = [
     { txt: '+3', fn: p => p + 3 }, { txt: '+5', fn: p => p + 5 },
@@ -287,10 +297,14 @@
     dist: $('dist'), score: $('score'),
     bossBanner: $('boss-banner'), bossNeed: $('boss-need'),
     floats: $('floats'),
+    camMode: $('cam-mode'),
     menu: $('menu'), pause: $('pause-overlay'), gameover: $('gameover'),
     menuBest: $('menu-best'), goScore: $('go-score'), goDist: $('go-dist'),
     goBest: $('go-best'), goNewBest: $('go-newbest'),
   };
+
+  function cameraLabel(k) { return k === 'classic' ? 'CLASSIC' : 'CUTE 3/4'; }
+  function syncCameraLabel() { els.camMode.textContent = `CAM: ${cameraLabel(activeCameraKey)}`; }
 
   // ----------------------------- audio --------------------------------
   class Audio {
@@ -911,6 +925,19 @@
     const f = clientX / window.innerWidth;        // 0..1 across screen
     G.lane = f < 0.34 ? 0 : f > 0.66 ? 2 : 1;
   }
+  function setCameraProfile(nextKey) {
+    if (!CAMERA_PROFILES[nextKey]) return;
+    activeCameraKey = nextKey;
+    ACTIVE_CAMERA = CAMERA_PROFILES[activeCameraKey];
+    camera.fov = ACTIVE_CAMERA.fov;
+    camera.updateProjectionMatrix();
+    syncCameraLabel();
+  }
+  function toggleCameraProfile() {
+    setCameraProfile(activeCameraKey === 'cute34' ? 'classic' : 'cute34');
+    audio.ui();
+    floatText(cameraLabel(activeCameraKey), '#ffce3a');
+  }
   window.addEventListener('keydown', e => {
     if (e.repeat) return;
     audio.unlock();
@@ -919,6 +946,7 @@
     else if (k === 'arrowright' || k === 'd') { moveLane(1); }
     else if (k === 'p' || k === 'escape') { togglePause(); }
     else if (k === 'm') { toggleMute(); }
+    else if (k === 'c') { toggleCameraProfile(); }
     else if (k === ' ' || k === 'enter') {
       if (G.state === STATE.MENU || G.state === STATE.OVER) startGame();
       else if (G.paused) togglePause();
@@ -1009,6 +1037,7 @@
   window.addEventListener('resize', onResize);
 
   // ----------------------------- main loop ----------------------------
+  syncCameraLabel();
   els.menuBest.textContent = G.best;
   let last = performance.now();
   let texScroll = 0;
