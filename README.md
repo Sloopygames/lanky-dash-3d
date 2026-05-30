@@ -17,7 +17,7 @@ bosses explode.
   screen (swipe on mobile).
 - **Start / Retry:** `Space`, `Enter`, click, or tap.
 - **Pause:** `P` or `Esc`.
-- **Camera:** `C` or the `C` button (top-right) toggles Classic/Cute 3/4 views.
+- **Camera:** `C` or the `C` button (top-right) cycles Classic/Cute 3/4/Diag 3/4/First Person views.
 - **Mute:** `M` or the speaker button (top-right).
 - **Fullscreen:** the expand button (top-right).
 - **Changelog:** `NEW` button (top-right).
@@ -35,7 +35,7 @@ bosses explode.
 - Adaptive quality scaling and in-game debug telemetry overlay.
 - Procedural Web Audio music and SFX with a mute toggle.
 - Desktop keyboard + mouse and full mobile touch support.
-- Touch settings (drag/swipe, dead-zone), handedness toggle, cosmetics, and local save migration.
+- Touch settings (drag/swipe, dead-zone), handedness toggle, cosmetics, and local save migration (legacy keys -> `lankydash_save_v2`).
 - Best score + daily challenge best saved locally with share text support.
 
 ## Tech
@@ -43,6 +43,28 @@ bosses explode.
 Single self-contained `index.html`. Vanilla JavaScript with **Three.js**
 (loaded from a CDN importmap) for 3D rendering and the **Web Audio API** for
 procedural sound. No build step, no backend, no frameworks.
+
+## Agent Automation
+
+You can run repository agent prompts from terminal using:
+
+- `scripts/run-agent-chat.ps1`
+
+Set a token first:
+
+- PowerShell: `$env:GITHUB_TOKEN = "<token>"`
+
+Example calls:
+
+- `pwsh ./scripts/run-agent-chat.ps1 -Agent exploration-operator -Prompt "Propose 3 improvements for onboarding readability."`
+- `pwsh ./scripts/run-agent-chat.ps1 -Agent expressive-chaos-explorer -Prompt "Generate 5 high-novelty happy-hardcore event trajectories."`
+- `pwsh ./scripts/run-agent-chat.ps1 -Agent governance-auditor -Prompt "Audit current repo state with Intent -> Admissibility -> Coverage -> Integrity -> Evidence -> Stop/Recover."`
+
+Notes:
+
+- This script runs against a chat completions endpoint and applies your local `.agent.md` instructions as system prompt context.
+- It does not invoke VS Code's internal subagent runtime directly.
+- Override endpoint/model with `-Endpoint` and `-Model` if needed.
 
 ## Camera Profile
 
@@ -52,3 +74,10 @@ Press `C` (or tap the top-right `C` button) to cycle through all views:
 - `CAMERA_PROFILES.classic` for the original chase-camera framing.
 - `CAMERA_PROFILES.cute34` for the cute 3/4 perspective (default).
 - `CAMERA_PROFILES.diag34` for a stronger diagonal 3/4 framing.
+- `CAMERA_PROFILES.fp` for a readability-assisted first-person run view.
+
+## Stability Guardrails
+
+- Adaptive quality uses moving frame-time thresholds and can force low-quality recovery when sustained spikes are detected.
+- First-person camera auto-falls back to `cute34` during sustained heavy frame-time spikes.
+- If Web Audio cannot recover to running state during gameplay, audio auto-mutes as a fail-safe.

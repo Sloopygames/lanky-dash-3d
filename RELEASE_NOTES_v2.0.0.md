@@ -33,6 +33,8 @@
 - Added share summary action from HUD and game over.
 - Added achievement/meta star tracking.
 - Added save migration path via consolidated v2 save key.
+- Added explicit legacy save probing (`lankydash_save`, `lanky_dash_save`, `lankydash_profile`) with one-time migration to `lankydash_save_v2`.
+- Added stop/recover guardrails for sustained frame-time spikes and audio recovery fallback.
 
 ## Performance and Diagnostics
 
@@ -42,5 +44,5 @@
 
 ## Notes
 
-- This release is save-compatible with prior best score tracking via migration path.
+- This release is save-compatible with prior best score tracking via migration path and legacy-key probe.
 - Daily challenge uses UTC date seeding for deterministic runs.
