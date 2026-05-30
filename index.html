@@ -240,6 +240,30 @@
   const MAX_SPEED = 36;
   const START_POWER = 5;
 
+  const CAMERA_PROFILES = {
+    classic: {
+      fov: 62,
+      start: [0, 5, 10],
+      baseY: 2.4, yByH: 1.7,
+      baseZ: 7.5, zByH: 2.1,
+      laneFollow: 0.5, sideBias: 0,
+      followX: 6, followYZ: 4,
+      lookX: 0.35, lookYBase: 0.6, lookYByH: 0.95, lookZ: -8,
+      shakeScale: 0.9,
+    },
+    cute34: {
+      fov: 56,
+      start: [1.2, 6.6, 12.2],
+      baseY: 3.1, yByH: 2.0,
+      baseZ: 8.6, zByH: 2.45,
+      laneFollow: 0.35, sideBias: 1.2,
+      followX: 5.2, followYZ: 3.4,
+      lookX: 0.22, lookYBase: 0.85, lookYByH: 1.02, lookZ: -6.2,
+      shakeScale: 0.62,
+    },
+  };
+  const ACTIVE_CAMERA = CAMERA_PROFILES.cute34;
+
   const POS_OPS = [
     { txt: '+3', fn: p => p + 3 }, { txt: '+5', fn: p => p + 5 },
     { txt: '+8', fn: p => p + 8 }, { txt: '×2', fn: p => p * 2 },
@@ -371,8 +395,8 @@
   scene.background = new THREE.Color(SKY);
   scene.fog = new THREE.Fog(FOGC, 35, 125);
 
-  const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 400);
-  camera.position.set(0, 5, 10);
+  const camera = new THREE.PerspectiveCamera(ACTIVE_CAMERA.fov, window.innerWidth / window.innerHeight, 0.1, 400);
+  camera.position.set(...ACTIVE_CAMERA.start);
 
   // preallocated colors for the hit-flash tint (kept clean: always lerps back to base)
   const C_SKY = new THREE.Color(SKY), C_FOG = new THREE.Color(FOGC);
@@ -1093,20 +1117,21 @@
     updateParticles(dt);
 
     // ---- camera ----
-    const camTargetY = 2.4 + hs * 1.7;
-    const camTargetZ = 7.5 + hs * 2.1;
-    const camTargetX = runner.group.position.x * 0.5;
-    camera.position.x = lerp(camera.position.x, camTargetX, 1 - Math.exp(-dt * 6));
-    camera.position.y = lerp(camera.position.y, camTargetY, 1 - Math.exp(-dt * 4));
-    camera.position.z = lerp(camera.position.z, camTargetZ, 1 - Math.exp(-dt * 4));
+    const cp = ACTIVE_CAMERA;
+    const camTargetY = cp.baseY + hs * cp.yByH;
+    const camTargetZ = cp.baseZ + hs * cp.zByH;
+    const camTargetX = runner.group.position.x * cp.laneFollow + cp.sideBias;
+    camera.position.x = lerp(camera.position.x, camTargetX, 1 - Math.exp(-dt * cp.followX));
+    camera.position.y = lerp(camera.position.y, camTargetY, 1 - Math.exp(-dt * cp.followYZ));
+    camera.position.z = lerp(camera.position.z, camTargetZ, 1 - Math.exp(-dt * cp.followYZ));
     // screen shake
     if (G.shake > 0) {
       G.shake = Math.max(0, G.shake - dt * 2.2);
-      const s = G.shake * G.shake * 0.9;
+      const s = G.shake * G.shake * cp.shakeScale;
       camera.position.x += rand(-s, s); camera.position.y += rand(-s, s);
     }
-    const lookY = 0.6 + hs * 0.95;
-    camera.lookAt(runner.group.position.x * 0.35, lookY, -8);
+    const lookY = cp.lookYBase + hs * cp.lookYByH;
+    camera.lookAt(runner.group.position.x * cp.lookX, lookY, cp.lookZ);
 
     // hit flash via fog/sky tint — always lerps back to base so nothing lingers
     G.hitFlash = Math.max(0, G.hitFlash - dt * 3);
