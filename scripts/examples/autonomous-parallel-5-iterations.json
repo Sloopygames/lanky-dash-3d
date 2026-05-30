@@ -1,8 +1,8 @@
 {
   "sessionName": "autonomous-parallel-5-iterations",
   "variables": {
-    "docsFolder": "C:/path/to/game-design-docs",
-    "task": "Refine the existing game using design docs from {{docsFolder}} while preserving playability and performance.",
+    "docsFolder": "C:/Users/cabel/git/lanky-dash-3D/docs",
+    "task": "Refine index.html with concrete gameplay improvements: add one new high-impact mechanic, one readability or UI improvement, and one audio or camera polish; preserve performance and controls; implement code changes directly, not docs-only output.",
     "auditTarget": ".github/workflows/artifacts/20260530-second-constrained-exploration/audit.md"
   },
   "steps": [
