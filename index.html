@@ -384,12 +384,25 @@
   const RARE_T4_PITY = 42;
 
   const BIOMES = [
-    { name: 'CARNIVAL RAVE', sky: 0x4ec8ff, fog: 0x9be7ff, ground: 0x67d59a, rail: 0xffffff, post: 0xff4d8d, gatePos: 0x38e07b, gateNeg: 0xff4d6d },
-    { name: 'TOYBOX CLAY', sky: 0xffc082, fog: 0xffddbe, ground: 0xb6cf6f, rail: 0xfff2df, post: 0xff9e72, gatePos: 0x5ddc96, gateNeg: 0xff7f73 },
-    { name: 'NEO ARCADE', sky: 0x132651, fog: 0x3957a2, ground: 0x3a8f72, rail: 0x9ee9ff, post: 0x7cf2f0, gatePos: 0x63ffcc, gateNeg: 0xff6385 },
-    { name: 'INK COMIC', sky: 0xf7f2de, fog: 0xd8d2c4, ground: 0x8ea381, rail: 0xffffff, post: 0x2a2a2a, gatePos: 0x32c96b, gateNeg: 0xd64646 },
-    { name: 'BUBBLEGUM MECHA', sky: 0xff9bce, fog: 0xffcfe7, ground: 0x8fdc9d, rail: 0xffffff, post: 0xb58bff, gatePos: 0x7aff8f, gateNeg: 0xff5f92 },
+    { name: 'CARNIVAL RAVE', sky: 0x4ec8ff, fog: 0x9be7ff, ground: 0x67d59a, rail: 0xffffff, post: 0xff4d8d, gatePos: 0x38e07b, gateNeg: 0xff4d6d, skyStyle: 'whistler_nocturne_gold' },
+    { name: 'TOYBOX CLAY', sky: 0xffc082, fog: 0xffddbe, ground: 0xb6cf6f, rail: 0xfff2df, post: 0xff9e72, gatePos: 0x5ddc96, gateNeg: 0xff7f73, skyStyle: 'tarsila_moon' },
+    { name: 'NEO ARCADE', sky: 0x132651, fog: 0x3957a2, ground: 0x3a8f72, rail: 0x9ee9ff, post: 0x7cf2f0, gatePos: 0x63ffcc, gateNeg: 0xff6385, skyStyle: 'magritte_horizon' },
+    { name: 'INK COMIC', sky: 0xf7f2de, fog: 0xd8d2c4, ground: 0x8ea381, rail: 0xffffff, post: 0x2a2a2a, gatePos: 0x32c96b, gateNeg: 0xd64646, skyStyle: 'goya_sabbath' },
+    { name: 'BUBBLEGUM MECHA', sky: 0xff9bce, fog: 0xffcfe7, ground: 0x8fdc9d, rail: 0xffffff, post: 0xb58bff, gatePos: 0x7aff8f, gateNeg: 0xff5f92, skyStyle: 'sohlberg_summer_night' },
   ];
+
+  const SKY_STYLE_PRESETS = {
+    elsheimer_flight_egypt: { top: 0x081227, bottom: 0x1f2941, glow: 0xffc78c, stars: 170, moon: 1, swirl: 0.08, spark: 0.02 },
+    wright_vesuvius: { top: 0x130f12, bottom: 0x3a1f1a, glow: 0xff7c38, stars: 65, moon: 0, swirl: 0.22, spark: 0.26 },
+    turner_fishermen: { top: 0x0a1529, bottom: 0x2a3650, glow: 0xe7d7b2, stars: 95, moon: 1, swirl: 0.28, spark: 0.05 },
+    goya_sabbath: { top: 0x131015, bottom: 0x221b20, glow: 0x7f6d4f, stars: 30, moon: 1, swirl: 0.1, spark: 0.01 },
+    whistler_nocturne_gold: { top: 0x090c12, bottom: 0x171f2f, glow: 0xffc85f, stars: 115, moon: 0, swirl: 0.12, spark: 0.22 },
+    vangogh_rhone: { top: 0x0f2d63, bottom: 0x244784, glow: 0xffd87f, stars: 190, moon: 0, swirl: 0.34, spark: 0.12 },
+    sohlberg_summer_night: { top: 0x1a3552, bottom: 0x38556f, glow: 0xb8deff, stars: 120, moon: 1, swirl: 0.09, spark: 0.02 },
+    pissarro_boulevard_night: { top: 0x1e2947, bottom: 0x3f5068, glow: 0xffb178, stars: 100, moon: 0, swirl: 0.14, spark: 0.08 },
+    tarsila_moon: { top: 0x2e2f5f, bottom: 0x4e4a76, glow: 0xd4ef9d, stars: 50, moon: 2, swirl: 0.06, spark: 0.04 },
+    magritte_horizon: { top: 0x182447, bottom: 0x314d7d, glow: 0xb4d8f5, stars: 80, moon: 3, swirl: 0.04, spark: 0.03 },
+  };
 
   const CAMERA_PROFILES = {
     classic: {
@@ -622,6 +635,110 @@
   const sun = new THREE.DirectionalLight(0xfff2d6, 1.0);
   sun.position.set(6, 14, 8);
   scene.add(sun);
+
+  // ----------------------------- painted sky -------------------------
+  const skyCanvas = document.createElement('canvas');
+  skyCanvas.width = 512; skyCanvas.height = 256;
+  const skyCtx = skyCanvas.getContext('2d');
+  const skyTex = new THREE.CanvasTexture(skyCanvas);
+  skyTex.wrapS = skyTex.wrapT = THREE.ClampToEdgeWrapping;
+  const skyDome = new THREE.Mesh(
+    new THREE.SphereGeometry(210, 28, 16),
+    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, transparent: false, opacity: 1, fog: false, depthWrite: false })
+  );
+  scene.add(skyDome);
+  // Let the painted sky dome provide the background rather than a flat clear color.
+  scene.background = null;
+
+  function skyStyleAtDistance(distance) {
+    const mix = styleMixAtDistance(distance);
+    const a = SKY_STYLE_PRESETS[BIOMES[mix.baseIdx].skyStyle];
+    const b = SKY_STYLE_PRESETS[BIOMES[mix.nextIdx].skyStyle];
+    let out = blendSkyStyles(a, b, mix.blend);
+    if (G.rareSkyStyle && G.rareSkyBoost > 0) {
+      const r = SKY_STYLE_PRESETS[G.rareSkyStyle];
+      out = blendSkyStyles(out, r, clamp(G.rareSkyBoost, 0, 1));
+      out.spark += 0.08 * G.rareSkyBoost;
+      out.swirl += 0.12 * G.rareSkyBoost;
+    }
+    return out;
+  }
+
+  function blendSkyStyles(a, b, t) {
+    return {
+      top: lerpHex(a.top, b.top, t),
+      bottom: lerpHex(a.bottom, b.bottom, t),
+      glow: lerpHex(a.glow, b.glow, t),
+      stars: lerp(a.stars, b.stars, t),
+      moon: Math.round(lerp(a.moon, b.moon, t)),
+      swirl: lerp(a.swirl, b.swirl, t),
+      spark: lerp(a.spark, b.spark, t),
+    };
+  }
+
+  function drawPaintedSky(style, pulse = 0, rareBoost = 0) {
+    const w = skyCanvas.width, h = skyCanvas.height;
+    skyCtx.clearRect(0, 0, w, h);
+    const g = skyCtx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, `#${style.top.toString(16).padStart(6, '0')}`);
+    g.addColorStop(1, `#${style.bottom.toString(16).padStart(6, '0')}`);
+    skyCtx.fillStyle = g;
+    skyCtx.fillRect(0, 0, w, h);
+
+    const glowAlpha = clamp(0.16 + pulse * 0.28 + rareBoost * 0.2, 0, 0.68);
+    skyCtx.fillStyle = `rgba(${(style.glow >> 16) & 255}, ${(style.glow >> 8) & 255}, ${style.glow & 255}, ${glowAlpha})`;
+    skyCtx.beginPath();
+    skyCtx.ellipse(w * 0.52, h * 0.7, w * 0.55, h * 0.27, 0, 0, Math.PI * 2);
+    skyCtx.fill();
+
+    const swirls = Math.floor(8 + style.swirl * 36);
+    skyCtx.strokeStyle = `rgba(255,255,255,${0.05 + style.swirl * 0.2})`;
+    skyCtx.lineWidth = 1.2;
+    for (let i = 0; i < swirls; i++) {
+      const y = h * (0.22 + i / swirls * 0.62);
+      const amp = (8 + style.swirl * 24) * (1 + pulse * 0.4);
+      skyCtx.beginPath();
+      skyCtx.moveTo(0, y);
+      for (let x = 0; x <= w; x += 16) {
+        const yy = y + Math.sin((x + i * 21) * 0.02 + i) * amp * 0.35;
+        skyCtx.lineTo(x, yy);
+      }
+      skyCtx.stroke();
+    }
+
+    const starCount = Math.floor(style.stars * (1 + pulse * 0.22));
+    for (let i = 0; i < starCount; i++) {
+      const x = random() * w;
+      const y = random() * h * 0.78;
+      const r = random() < 0.12 ? 1.8 : (0.5 + random() * 1.1);
+      const a = 0.35 + random() * 0.55;
+      skyCtx.fillStyle = `rgba(${220 + randi(35)}, ${220 + randi(35)}, ${220 + randi(35)}, ${a})`;
+      skyCtx.beginPath();
+      skyCtx.arc(x, y, r, 0, Math.PI * 2);
+      skyCtx.fill();
+    }
+
+    const moonCount = clamp(style.moon, 0, 3);
+    for (let i = 0; i < moonCount; i++) {
+      const x = w * (0.2 + i * 0.28 + random() * 0.1);
+      const y = h * (0.18 + random() * 0.18);
+      const r = 10 + i * 5 + random() * 8;
+      skyCtx.fillStyle = `rgba(255,245,218,${0.45 - i * 0.08})`;
+      skyCtx.beginPath();
+      skyCtx.arc(x, y, r, 0, Math.PI * 2);
+      skyCtx.fill();
+    }
+
+    const sparks = Math.floor((style.spark + rareBoost * 0.4) * 100);
+    skyCtx.fillStyle = 'rgba(255,196,90,0.6)';
+    for (let i = 0; i < sparks; i++) {
+      const x = random() * w;
+      const y = h * (0.25 + random() * 0.6);
+      skyCtx.fillRect(x, y, 1 + random() * 2, 1 + random() * 2);
+    }
+
+    skyTex.needsUpdate = true;
+  }
 
   // ----------------------------- ground -------------------------------
   function makeTrackTexture() {
@@ -1046,6 +1163,9 @@
     rareTimer: 0,
     rareCooldown: 0,
     rareDrought: 0,
+    skyPaintTimer: 0,
+    rareSkyBoost: 0,
+    rareSkyStyle: '',
   };
   G.best = SAVE.best || 0;
 
@@ -1123,7 +1243,6 @@
     G.biomeIndex = mix.baseIdx;
     C_SKY.setHex(lerpHex(a.sky, b.sky, mix.blend));
     C_FOG.setHex(lerpHex(a.fog, b.fog, mix.blend));
-    scene.background.copy(C_SKY);
     scene.fog.color.copy(C_FOG);
     railMat.color.setHex(lerpHex(a.rail, b.rail, mix.blend));
     rails.forEach(r => r.material.color.copy(railMat.color));
@@ -1184,6 +1303,8 @@
       G.score += 28;
     } else if (tier === 3) {
       G.rareCooldown = RARE_T3_COOLDOWN;
+      G.rareSkyBoost = Math.max(G.rareSkyBoost, 0.45);
+      G.rareSkyStyle = choice(['whistler_nocturne_gold', 'pissarro_boulevard_night', 'turner_fishermen']);
       for (let i = 0; i < 4; i++) burst(rand(-4, 4), rand(1.4, 4.5), rp.z - 10 - i * 4, 0xff7df0, 18, 1.4);
       G.shake = Math.max(G.shake, 0.45);
       G.slowmo = Math.min(G.slowmo, 0.85);
@@ -1192,6 +1313,8 @@
       audio.cheer();
     } else if (tier === 4) {
       G.rareCooldown = RARE_T3_COOLDOWN + 3;
+      G.rareSkyBoost = Math.max(G.rareSkyBoost, 0.72);
+      G.rareSkyStyle = choice(['wright_vesuvius', 'vangogh_rhone']);
       for (let i = 0; i < 6; i++) burst(rand(-5, 5), rand(1.2, 6), rp.z - 12 - i * 3, 0xff5f92, 22, 1.8);
       G.power += 4;
       G.shield = true;
@@ -1201,6 +1324,8 @@
       audio.smash();
     } else {
       G.rareCooldown = RARE_T3_COOLDOWN + 5;
+      G.rareSkyBoost = Math.max(G.rareSkyBoost, 0.95);
+      G.rareSkyStyle = choice(['elsheimer_flight_egypt', 'magritte_horizon', 'wright_vesuvius']);
       for (let i = 0; i < 9; i++) burst(rand(-6, 6), rand(1.2, 7), rp.z - 14 - i * 3.2, 0xffffff, 26, 2.1);
       G.power += 7;
       G.combo = Math.min(26, G.combo + 4);
@@ -1250,6 +1375,9 @@
     G.rareTimer = 0;
     G.rareCooldown = 0;
     G.rareDrought = 0;
+    G.skyPaintTimer = 0;
+    G.rareSkyBoost = 0;
+    G.rareSkyStyle = '';
     G.missionState = { gates: 0, mults: 0, cleanDist: 0, boss: 0, swaps: 0, volatile: 0 };
     G.starsRun = 0;
     telemetry.collisions = { hazard: 0, bossFail: 0 };
@@ -1269,6 +1397,7 @@
       savePersist();
     }
     applyBiomeAtDistance(0);
+    drawPaintedSky(skyStyleAtDistance(0), 0, 0);
     updateHud();
   }
 
@@ -1849,6 +1978,7 @@
       if (G.overcharge) G.score += eff * 3.2;
       if (G.volatileTimer > 0) G.volatileTimer -= eff;
       G.stylePulse = Math.max(0, G.stylePulse - eff * 0.7);
+      G.rareSkyBoost = Math.max(0, G.rareSkyBoost - eff * 0.18);
       applyBiomeAtDistance(G.distance);
       // spawn rows
       G.rowZacc += scroll;
@@ -1860,6 +1990,14 @@
       }
       maybeTriggerRareEvent(eff);
       missionProgressTick();
+    }
+
+    // painted sky update (throttled for performance)
+    G.skyPaintTimer -= dt;
+    if (G.skyPaintTimer <= 0) {
+      G.skyPaintTimer = telemetry.quality === 'low' ? 0.14 : 0.09;
+      const skyStyle = skyStyleAtDistance(G.distance);
+      drawPaintedSky(skyStyle, G.stylePulse, G.rareSkyBoost);
     }
 
     // scroll ground texture + roadside posts
@@ -1980,11 +2118,12 @@
     }
     const lookY = cp.lookYBase + hs * cp.lookYByH;
     camera.lookAt(runner.group.position.x * cp.lookX + cp.lookSideBias, lookY, cp.lookZ);
+    skyDome.position.copy(camera.position);
 
     // hit flash via fog/sky tint — always lerps back to base so nothing lingers
     G.hitFlash = Math.max(0, G.hitFlash - dt * 3);
     scene.fog.color.copy(C_FOG).lerp(C_HIT_FOG, G.hitFlash * 0.5);
-    scene.background.copy(C_SKY).lerp(C_HIT_SKY, G.hitFlash * 0.35);
+    skyDome.material.color.copy(C_SKY).lerp(C_HIT_SKY, G.hitFlash * 0.35);
 
     // adaptive quality
     telemetry.fpsMs = lerp(telemetry.fpsMs, dt * 1000, 0.08);
