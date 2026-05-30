@@ -20,6 +20,7 @@ bosses explode.
 - **Camera:** `C` or the `C` button (top-right) toggles Classic/Cute 3/4 views.
 - **Mute:** `M` or the speaker button (top-right).
 - **Fullscreen:** the expand button (top-right).
+- **Changelog:** `NEW` button (top-right).
 
 ## Features
 

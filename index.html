@@ -126,6 +126,7 @@
   #settings-btn { right: 104px; font-size: 14px; }
   #share-btn { right: 136px; font-size: 13px; }
   #debug-btn { right: 168px; font-size: 12px; }
+  #news-btn { right: 200px; font-size: 12px; }
   #cam-mode {
     top: 40px; right: 10px;
     font-size: 11px; letter-spacing: .06em;
@@ -191,6 +192,9 @@
   #pause-overlay .card { background: rgba(255,246,230,.95); }
 
   #settings .card { max-width: min(520px, 94vw); }
+  #changelog .card { max-width: min(620px, 94vw); text-align: left; }
+  .changelog-list { margin-top: 8px; font-size: 14px; line-height: 1.45; }
+  .changelog-list li { margin: 5px 0; }
   .set-row {
     display: flex;
     justify-content: space-between;
@@ -253,6 +257,7 @@
   <button id="debug-btn" class="icon-btn" aria-label="Toggle debug" title="Debug">DBG</button>
   <button id="share-btn" class="icon-btn" aria-label="Share score" title="Share">SH</button>
   <button id="settings-btn" class="icon-btn" aria-label="Settings" title="Settings">⚙</button>
+  <button id="news-btn" class="icon-btn" aria-label="Changelog" title="Changelog">NEW</button>
   <button id="cam-btn" class="icon-btn" aria-label="Toggle camera perspective" title="Camera">C</button>
   <button id="mute-btn" class="icon-btn" aria-label="Toggle sound" title="Sound">🔊</button>
   <button id="sg-fs-btn" class="icon-btn" aria-label="Toggle fullscreen" title="Fullscreen">
@@ -309,6 +314,21 @@
     </div>
   </div>
 
+  <div id="changelog" class="overlay hidden">
+    <div class="card">
+      <div class="title" style="font-size:clamp(24px,7vw,42px)">WHAT'S NEW</div>
+      <ul class="changelog-list">
+        <li>Daily seed challenge with deterministic runs and daily best tracking.</li>
+        <li>Mission cards, combo multiplier, shields, and overcharge risk/reward.</li>
+        <li>New hazards: sweeper and crusher, plus volatile high-gain gates.</li>
+        <li>Boss telegraphs with dodge bonus reducing smash requirements.</li>
+        <li>Biome progression, adaptive quality mode, and debug telemetry panel.</li>
+        <li>Touch settings, handedness layout, cosmetics, and quick share action.</li>
+      </ul>
+      <button id="changelog-close" class="btn">CLOSE</button>
+    </div>
+  </div>
+
   <!-- Game over -->
   <div id="gameover" class="overlay hidden">
     <div class="card">
@@ -353,7 +373,7 @@
   const BOSS_DISTANCE = 440;     // meters between bosses
   const BASE_SPEED = 17;
   const MAX_SPEED = 36;
-  const START_POWER = 5;
+  const START_POWER = 6;
   const OVERCHARGE_POWER = 52;
 
   const BIOMES = [
@@ -400,16 +420,16 @@
   const CAMERA_ORDER = ['classic', 'cute34', 'diag34'];
 
   const POS_OPS = [
-    { txt: '+3', fn: p => p + 3 }, { txt: '+5', fn: p => p + 5 },
-    { txt: '+8', fn: p => p + 8 }, { txt: '×2', fn: p => p * 2 },
-    { txt: '+5', fn: p => p + 5 }, { txt: '×2', fn: p => p * 2 },
+    { txt: '+3', fn: p => p + 3 }, { txt: '+4', fn: p => p + 4 },
+    { txt: '+7', fn: p => p + 7 }, { txt: '×2', fn: p => p * 2 },
+    { txt: '+5', fn: p => p + 5 }, { txt: '×1.8', fn: p => p * 1.8 },
   ];
   const VOLATILE_OPS = [
     { txt: 'V+12', fn: p => p + 12, volatilePenalty: 6 },
     { txt: 'V×2', fn: p => p * 2, volatilePenalty: 8 },
   ];
   const NEG_OPS = [
-    { txt: '−3', fn: p => p - 3 }, { txt: '−5', fn: p => p - 5 },
+    { txt: '−2', fn: p => p - 2 }, { txt: '−4', fn: p => p - 4 },
     { txt: '÷2', fn: p => p / 2 }, { txt: '−4', fn: p => p - 4 },
   ];
 
@@ -438,7 +458,7 @@
     floats: $('floats'),
     camMode: $('cam-mode'),
     menu: $('menu'), pause: $('pause-overlay'), gameover: $('gameover'),
-    settings: $('settings'), tutorial: $('tutorial'), debug: $('debug-panel'),
+    settings: $('settings'), tutorial: $('tutorial'), changelog: $('changelog'), debug: $('debug-panel'),
     menuBest: $('menu-best'), goScore: $('go-score'), goDist: $('go-dist'),
     goBest: $('go-best'), goNewBest: $('go-newbest'),
   };
@@ -967,7 +987,7 @@
     state: STATE.MENU, paused: false,
     power: START_POWER, distance: 0, score: 0, speed: BASE_SPEED,
     lane: 1, runPhase: 0, pop: 0, shake: 0, slowmo: 1, hitFlash: 0,
-    rowZacc: 0, bossMeter: BOSS_DISTANCE, bossIndex: 0, bossThreshold: 28,
+    rowZacc: 0, bossMeter: BOSS_DISTANCE, bossIndex: 0, bossThreshold: 24,
     bossActive: false, freeze: 0, best: 0,
     shield: false,
     combo: 0, comboMult: 1,
@@ -1085,7 +1105,7 @@
     texScroll = 0;
     G.power = START_POWER; G.distance = 0; G.score = 0; G.speed = BASE_SPEED;
     G.lane = 1; G.runPhase = 0; G.pop = 0; G.shake = 0; G.slowmo = 1; G.hitFlash = 0;
-    G.rowZacc = 0; G.bossMeter = BOSS_DISTANCE; G.bossIndex = 0; G.bossThreshold = 28;
+    G.rowZacc = 0; G.bossMeter = BOSS_DISTANCE; G.bossIndex = 0; G.bossThreshold = 24;
     G.bossActive = false; G.freeze = 0;
     G.shield = false; G.combo = 0; G.comboMult = 1; G.overcharge = false;
     G.volatileTimer = 0;
@@ -1348,9 +1368,9 @@
       G.bossIndex++;
       G.missionState.boss += 1;
       G.score += 120 + G.bossIndex * 40;
-      G.bossThreshold = Math.round(G.bossThreshold * 1.65 + 14);
+      G.bossThreshold = Math.round(G.bossThreshold * 1.5 + 12);
       G.speed = Math.min(MAX_SPEED, G.speed + 2.2);
-      G.bossMeter = BOSS_DISTANCE;   // normal rows already resume via G.bossActive=false above
+      G.bossMeter = BOSS_DISTANCE - Math.min(120, G.bossIndex * 10);   // tighten cadence slowly over run
       floatText('SMASH!', '#ffce3a');
       emitEvent('boss_win', { type: G.bossType, dodged: G.bossDodged });
       missionProgressTick();
@@ -1385,6 +1405,7 @@
     els.pause.classList.add('hidden');
     els.settings.classList.add('hidden');
     els.tutorial.classList.add('hidden');
+    els.changelog.classList.add('hidden');
     emitEvent('run_start', { seed: G.dailySeed, daily: G.dailyMode });
   }
   function gameOver() {
@@ -1500,7 +1521,7 @@
 
   function applyUiSide() {
     const left = SAVE.settings.handedness === 'left';
-    const ids = ['sg-fs-btn', 'mute-btn', 'cam-btn', 'settings-btn', 'share-btn', 'debug-btn'];
+    const ids = ['sg-fs-btn', 'mute-btn', 'cam-btn', 'settings-btn', 'share-btn', 'debug-btn', 'news-btn'];
     ids.forEach((id, i) => {
       const el = $(id);
       el.style.left = left ? `${8 + i * 32}px` : '';
@@ -1544,6 +1565,15 @@
   $('pause-settings-btn').addEventListener('click', () => {
     audio.ui();
     openSettings();
+  });
+  $('news-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    audio.ui();
+    els.changelog.classList.remove('hidden');
+  });
+  $('changelog-close').addEventListener('click', () => {
+    audio.ui();
+    els.changelog.classList.add('hidden');
   });
   $('settings-close').addEventListener('click', () => { audio.ui(); closeSettings(); });
 
@@ -1614,7 +1644,7 @@
   document.addEventListener('webkitfullscreenchange', syncFsIcon);
   // the top-right buttons sit beside the canvas, not inside it, so steering never sees
   // their pointer events — but guard defensively so a future refactor can't regress it.
-  for (const b of [camBtn, muteBtn, fsBtn, settingsBtn, $('share-btn'), $('debug-btn')]) {
+  for (const b of [camBtn, muteBtn, fsBtn, settingsBtn, $('share-btn'), $('debug-btn'), $('news-btn')]) {
     b.addEventListener('pointerdown', e => e.stopPropagation());
     b.addEventListener('pointerup', e => e.stopPropagation());
   }
