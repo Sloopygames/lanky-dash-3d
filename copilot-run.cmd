@@ -1,5 +1,6 @@
 @echo off
 copilot.bat ^
+  --model auto ^
   --allow-all-tools ^
   --no-ask-user ^
   --silent ^

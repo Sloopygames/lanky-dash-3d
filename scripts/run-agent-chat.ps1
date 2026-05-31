@@ -1,7 +1,7 @@
 param(
     [string]$Agent,
     [string]$Prompt,
-    [string]$Model = "gpt-4o-mini",
+    [string]$Model = "auto",
     [string]$Endpoint = "",
     [ValidateSet("auto", "api", "cli")]
     [string]$Backend = "auto",
@@ -57,6 +57,18 @@ function Write-Live([string]$Message) {
     }
 }
 
+function Write-LiveOutput([string]$Label, [string]$OutputText) {
+    if (-not $Live) {
+        return
+    }
+
+    $preview = Truncate-Text -Text $OutputText -MaxChars $MaxTextChars
+    $ts = (Get-Date).ToString("HH:mm:ss")
+    Write-Host "[$ts] OUTPUT $Label >>>"
+    Write-Host $preview
+    Write-Host "[$ts] OUTPUT $Label <<<"
+}
+
 function Resolve-Backend {
     if ($Backend -eq "api") {
         $script:ResolvedBackend = "api"
@@ -77,6 +89,12 @@ function Resolve-Backend {
 }
 
 Resolve-Backend
+
+$script:ApiModel = if ($Model -eq "auto") { "gpt-4o-mini" } else { $Model }
+
+if ($script:ResolvedBackend -eq "api" -and $Model -eq "auto") {
+    Write-Live "INFO api backend does not use auto model; falling back to '$script:ApiModel'"
+}
 
 function Truncate-Text([string]$Text, [int]$MaxChars) {
     if ([string]::IsNullOrEmpty($Text)) { return $Text }
@@ -266,12 +284,33 @@ function Invoke-CliModel([string]$InputText, [string]$Label) {
     $started = Get-Date
 
     $output = ""
-    if ($CliPromptMode -eq "arg") {
-        $allArgs = @($CliArgs + @($InputText))
-        $output = (& $cmd.Source @allArgs 2>&1 | Out-String)
+    if ($Live) {
+        $chunks = New-Object System.Collections.Generic.List[string]
+        if ($CliPromptMode -eq "arg") {
+            $allArgs = @($CliArgs + @($InputText))
+            & $cmd.Source @allArgs 2>&1 | ForEach-Object {
+                $chunk = [string]$_
+                Write-Host $chunk
+                $chunks.Add($chunk)
+            }
+        }
+        else {
+            $InputText | & $cmd.Source @CliArgs 2>&1 | ForEach-Object {
+                $chunk = [string]$_
+                Write-Host $chunk
+                $chunks.Add($chunk)
+            }
+        }
+        $output = ($chunks -join [Environment]::NewLine)
     }
     else {
-        $output = ($InputText | & $cmd.Source @CliArgs 2>&1 | Out-String)
+        if ($CliPromptMode -eq "arg") {
+            $allArgs = @($CliArgs + @($InputText))
+            $output = (& $cmd.Source @allArgs 2>&1 | Out-String)
+        }
+        else {
+            $output = ($InputText | & $cmd.Source @CliArgs 2>&1 | Out-String)
+        }
     }
 
     if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) {
@@ -280,7 +319,11 @@ function Invoke-CliModel([string]$InputText, [string]$Label) {
 
     $elapsed = [int]((Get-Date) - $started).TotalSeconds
     Write-Live "DONE  $Label in ${elapsed}s"
-    return $output.Trim()
+    $finalOutput = $output.Trim()
+    if (-not $Live) {
+        Write-LiveOutput -Label $Label -OutputText $finalOutput
+    }
+    return $finalOutput
 }
 
 function Invoke-AgentCall([string]$AgentName, [string]$UserPrompt, [hashtable]$Session, [bool]$Writable, [string]$ContextLabel = "") {
@@ -319,7 +362,7 @@ $agentBody
     }
 
     $payload = @{
-        model       = $Model
+        model       = $script:ApiModel
         messages    = $messages
         temperature = 0.4
     } | ConvertTo-Json -Depth 25
@@ -361,7 +404,9 @@ $agentBody
         throw "No choices returned from endpoint."
     }
 
-    return Convert-MessageContentToText $response.choices[0].message.content
+    $finalOutput = Convert-MessageContentToText $response.choices[0].message.content
+    Write-LiveOutput -Label $label -OutputText $finalOutput
+    return $finalOutput
 }
 
 function Strip-CodeFences([string]$Text) {

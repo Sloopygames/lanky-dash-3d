@@ -5,3 +5,125 @@
 .action-feedback.active {
     background-color: yellow; /* Highlighting effect */
 }
+.combo-counter {
+    position: fixed;
+    top: 50px;
+    left: 10px;
+    font-size: 24px;
+    color: #ff0;
+}
+
+.hazard-zone {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.tutorial-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 1000;
+}
+
+.power-up-customization {
+    margin: 20px;
+}
+
+.level-selection {
+    margin: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.health-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #ccc;
+}
+
+.health-indicator {
+    height: 100%;
+    width: 100%;
+    background-color: green;
+}
+
+.combo-scoring {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 20px;
+    color: white;
+}
+
+environment-interaction {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    font-size: 16px;
+    color: yellow;
+}
+
+.shield-mechanic {
+    position: absolute;
+    top: 50px;
+    left: 10px;
+    font-size: 20px;
+    color: blue;
+}
+
+.shield-cooldown {
+    height: 5px;
+    background: gray;
+    width: 100%;
+    transition: width 1s;
+}
+
+enemy-feedback {
+    position: absolute;
+    top: 100px;
+    left: 10px;
+    font-size: 16px;
+    color: green;
+}
+
+.power-ups {
+    position: absolute;
+    top: 20px;
+    left: 10px;
+    font-size: 20px;
+    color: green;
+}
+
+time-manipulation {
+    position: absolute;
+    top: 60px;
+    left: 10px;
+    font-size: 20px;
+    color: blue;
+}
+.time-timer {
+    font-weight: bold;
+}
+
+.score-multiplier {
+    position: absolute;
+    top: 100px;
+    left: 10px;
+    font-size: 20px;
+    color: orange;
+}
+
+.combo-meter {
+    position: absolute;
+    top: 140px;
+    left: 10px;
+    font-size: 20px;
+    color: orange;
+}

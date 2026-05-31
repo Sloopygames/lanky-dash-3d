@@ -1,0 +1,239 @@
+{
+  "sessionName": "autonomous-parallel-5-iterations",
+  "variables": {
+    "docsFolder": "C:/Users/cabel/git/lanky-dash-3D/docs",
+    "task": "Refine index.html with concrete gameplay improvements: add one new high-impact mechanic, one readability or UI improvement, and one audio or camera polish; preserve performance and controls; implement code changes directly, not docs-only output.",
+    "auditTarget": ".github/workflows/artifacts/20260530-second-constrained-exploration/audit.md"
+  },
+  "steps": [
+    {
+      "id": "cycle1-fanout",
+      "parallel": [
+        {
+          "id": "cycle1-safe",
+          "agent": "exploration-operator",
+          "prompt": "Cycle 1 safe exploration. Read docs at {{docsFolder}} and propose a low-risk iteration plan for {{task}}."
+        },
+        {
+          "id": "cycle1-creative",
+          "agent": "expressive-chaos-explorer",
+          "prompt": "Cycle 1 creative exploration. Read docs at {{docsFolder}} and propose a high-novelty direction for {{task}} that preserves readability."
+        }
+      ],
+      "on": {
+        "default": "cycle1-merge"
+      }
+    },
+    {
+      "id": "cycle1-merge",
+      "agent": "exploration-operator",
+      "prompt": "Merge these cycle 1 branch results into one actionable plan: {{parallelResultsJson}}. Keep changes minimal and auditable.",
+      "on": {
+        "default": "cycle1-implement"
+      }
+    },
+    {
+      "id": "cycle1-implement",
+      "agent": "exploration-operator",
+      "allowEdits": true,
+      "prompt": "Implement the cycle 1 merged plan for {{task}}. Return JSON actions only.",
+      "on": {
+        "default": "cycle1-audit"
+      }
+    },
+    {
+      "id": "cycle1-audit",
+      "agent": "governance-auditor",
+      "prompt": "Audit cycle 1 implementation for {{task}} with kernel Intent -> Admissibility -> Coverage -> Integrity -> Evidence -> Stop/Recover. Append to {{auditTarget}}.",
+      "on": {
+        "default": "cycle2-fanout"
+      }
+    },
+    {
+      "id": "cycle2-fanout",
+      "parallel": [
+        {
+          "id": "cycle2-safe",
+          "agent": "exploration-operator",
+          "prompt": "Cycle 2 safe exploration. Build on prior outputs and docs at {{docsFolder}} to improve {{task}} with low regression risk."
+        },
+        {
+          "id": "cycle2-creative",
+          "agent": "expressive-chaos-explorer",
+          "prompt": "Cycle 2 creative exploration. Increase novelty while preserving core game identity and usability for {{task}}."
+        }
+      ],
+      "on": {
+        "default": "cycle2-merge"
+      }
+    },
+    {
+      "id": "cycle2-merge",
+      "agent": "exploration-operator",
+      "prompt": "Merge cycle 2 branch outputs: {{parallelResultsJson}} into one plan that can be implemented safely.",
+      "on": {
+        "default": "cycle2-implement"
+      }
+    },
+    {
+      "id": "cycle2-implement",
+      "agent": "exploration-operator",
+      "allowEdits": true,
+      "prompt": "Implement the cycle 2 merged plan. Return JSON actions only.",
+      "on": {
+        "default": "cycle2-audit"
+      }
+    },
+    {
+      "id": "cycle2-audit",
+      "agent": "governance-auditor",
+      "prompt": "Audit cycle 2 output with kernel checks. Append evidence to {{auditTarget}}.",
+      "on": {
+        "default": "cycle3-fanout"
+      }
+    },
+    {
+      "id": "cycle3-fanout",
+      "parallel": [
+        {
+          "id": "cycle3-safe",
+          "agent": "exploration-operator",
+          "prompt": "Cycle 3 safe exploration for {{task}} using {{docsFolder}} with strict regression control."
+        },
+        {
+          "id": "cycle3-creative",
+          "agent": "expressive-chaos-explorer",
+          "prompt": "Cycle 3 creative exploration for {{task}} emphasizing fresh mechanics and presentation while preserving controls clarity."
+        }
+      ],
+      "on": {
+        "default": "cycle3-merge"
+      }
+    },
+    {
+      "id": "cycle3-merge",
+      "agent": "exploration-operator",
+      "prompt": "Merge cycle 3 branch outputs into one balanced implementation plan: {{parallelResultsJson}}.",
+      "on": {
+        "default": "cycle3-implement"
+      }
+    },
+    {
+      "id": "cycle3-implement",
+      "agent": "exploration-operator",
+      "allowEdits": true,
+      "prompt": "Implement the cycle 3 merged plan. Return JSON actions only.",
+      "on": {
+        "default": "cycle3-audit"
+      }
+    },
+    {
+      "id": "cycle3-audit",
+      "agent": "governance-auditor",
+      "prompt": "Audit cycle 3 output with kernel checks and append to {{auditTarget}}.",
+      "on": {
+        "default": "cycle4-fanout"
+      }
+    },
+    {
+      "id": "cycle4-fanout",
+      "parallel": [
+        {
+          "id": "cycle4-safe",
+          "agent": "exploration-operator",
+          "prompt": "Cycle 4 safe exploration for {{task}} with focus on polish and consistency."
+        },
+        {
+          "id": "cycle4-creative",
+          "agent": "expressive-chaos-explorer",
+          "prompt": "Cycle 4 creative exploration for {{task}} with bold but testable experiments that keep gameplay readable."
+        }
+      ],
+      "on": {
+        "default": "cycle4-merge"
+      }
+    },
+    {
+      "id": "cycle4-merge",
+      "agent": "exploration-operator",
+      "prompt": "Merge cycle 4 branch outputs into one implementation plan: {{parallelResultsJson}}.",
+      "on": {
+        "default": "cycle4-implement"
+      }
+    },
+    {
+      "id": "cycle4-implement",
+      "agent": "exploration-operator",
+      "allowEdits": true,
+      "prompt": "Implement the cycle 4 merged plan. Return JSON actions only.",
+      "on": {
+        "default": "cycle4-audit"
+      }
+    },
+    {
+      "id": "cycle4-audit",
+      "agent": "governance-auditor",
+      "prompt": "Audit cycle 4 output and append kernel-based evidence to {{auditTarget}}.",
+      "on": {
+        "default": "cycle5-fanout"
+      }
+    },
+    {
+      "id": "cycle5-fanout",
+      "parallel": [
+        {
+          "id": "cycle5-safe",
+          "agent": "exploration-operator",
+          "prompt": "Cycle 5 safe exploration for {{task}} with final stabilization priorities."
+        },
+        {
+          "id": "cycle5-creative",
+          "agent": "expressive-chaos-explorer",
+          "prompt": "Cycle 5 creative exploration for {{task}} with final high-impact ideas that still preserve core identity."
+        }
+      ],
+      "on": {
+        "default": "cycle5-merge"
+      }
+    },
+    {
+      "id": "cycle5-merge",
+      "agent": "exploration-operator",
+      "prompt": "Merge cycle 5 branch outputs into one final implementation plan: {{parallelResultsJson}}.",
+      "on": {
+        "default": "cycle5-implement"
+      }
+    },
+    {
+      "id": "cycle5-implement",
+      "agent": "exploration-operator",
+      "allowEdits": true,
+      "prompt": "Implement the cycle 5 merged plan. Return JSON actions only.",
+      "on": {
+        "default": "cycle5-audit"
+      }
+    },
+    {
+      "id": "cycle5-audit",
+      "agent": "governance-auditor",
+      "prompt": "Audit cycle 5 output and append to {{auditTarget}}. Return pass/fail/defer with evidence and unresolved blockers.",
+      "on": {
+        "pass": "cycle1-fanout",
+        "success": "cycle1-fanout",
+        "defer": "cycle1-fanout",
+        "fail": "cycle1-fanout",
+        "error": "cycle1-fanout",
+        "repair-required": "cycle1-fanout",
+        "default": "cycle1-fanout"
+      }
+    },
+    {
+      "id": "defer-human-irreducible",
+      "agent": "governance-auditor",
+      "prompt": "After at least five autonomous cycles, produce a deferred handoff packet for human-irreducible blockers only. Include blockers, evidence, attempted recoveries, and minimal next human decisions. Append to {{auditTarget}}.",
+      "on": {
+        "default": "stop"
+      }
+    }
+  ]
+}

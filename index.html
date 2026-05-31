@@ -2735,3 +2735,334 @@ window.addEventListener('keydown', (event) => {
 <script src="path/to/power-slide.js"></script>
 <script src="path/to/hazard-indicators.js"></script>
 <script src="path/to/sound-effects.js"></script><script src="path/to/dash-ability.js"></script>
+<!-- Power-Up System Section -->
+<div id="power-ups">
+  <h2>Power-Ups</h2>
+  <div class="power-up-indicator">Speed Boost: <span id="speed-boost">0</span></div>
+  <div class="power-up-indicator">Invincibility: <span id="invincibility">0</span></div>
+  <div class="power-up-indicator">Double Jump: <span id="double-jump">0</span></div>
+</div>
+
+<!-- Contextual Action Prompts -->
+<div id="action-prompts" style="display:none;"></div>
+
+<div id="combo-counter" class="combo-counter">Combo: 0</div>
+<div class="hazard-zone" id="spike-zone"></div>
+
+<div id="power-up-customization" class="power-up-customization">
+    <h2>Select Your Power-Ups</h2>
+    <label><input type="checkbox" value="speed"> Speed Boost</label>
+    <label><input type="checkbox" value="shield"> Shield</label>
+    <label><input type="checkbox" value="double-jump"> Double Jump</label>
+</div>
+<div id="time-manipulation" class="time-manipulation">
+    <button id="slow-time">Slow Time</button>
+</div>
+<div id="level-selection" class="level-selection">
+    <h2>Select Level</h2>
+    <!-- Level options will be populated here -->
+</div>
+<div id="health-bar" class="health-bar">
+    <div class="health-indicator" id="health-indicator"></div>
+</div>
+
+<div id="combo-scoring" class="combo-scoring">
+    <h2>Combo Multiplier: <span id="combo-multiplier">x1</span></h2>
+</div>
+<div id="environment-interaction" class="environment-interaction">
+    <h2>Interact with Environment</h2>
+    <p id="action-prompt" class="action-prompt" style="display:none;">Press E to break wall</p>
+</div>
+
+<div id="shield-mechanic" class="shield-mechanic">
+    <h2>Shield Active: <span id="shield-status">Inactive</span></h2>
+    <div id="shield-cooldown" class="shield-cooldown"></div>
+</div>
+
+<div id="enemy-feedback" class="enemy-feedback" style="display:none;"></div>
+
+<div id="power-ups" class="power-ups">
+    <h2>Power-Ups Available: <span id="power-up-count">0</span></h2>
+</div>
+<div id="time-manipulation" class="time-manipulation" style="display:none;">
+    <h2>Time Manipulation Active: <span id="time-status">Inactive</span></h2>
+    <div id="time-timer" class="time-timer"></div>
+</div>
+
+<div id="score-multiplier" class="score-multiplier" style="display:none;">
+    <h2>Score Multiplier: <span id="multiplier-value">1x</span></h2>
+</div>
+<div id="combo-meter" class="combo-meter">
+    <h2>Combo Multiplier: <span id="combo-value">1x</span></h2>
+</div>
+
+<!-- New High-Impact Mechanic: Momentum Dash -->
+<script>
+let momentum = 0;
+const maxMomentum = 10;
+const dashSpeed = 20;
+
+function updatePlayer() {
+    // Existing movement code...
+
+    // Increase momentum based on movement input
+    if (isMoving) {
+        momentum = Math.min(momentum + 0.1, maxMomentum);
+    } else {
+        momentum = Math.max(momentum - 0.2, 0);
+    }
+
+    // Execute dash if the player presses the dash key
+    if (isDashing) {
+        player.speed += dashSpeed * (momentum / maxMomentum);
+        momentum = 0; // Reset momentum after dashing
+    }
+}
+</script>
+
+<!-- Power-Up Boosts Mechanic -->
+<script>
+let powerUps = [];
+
+function collectPowerUp(player) {
+    // Logic to apply power-up effects
+    player.speed *= 2; // Example effect: double speed
+    setTimeout(() => { player.speed /= 2; }, 10000); // Effect lasts for 10 seconds
+}
+</script>
+
+<!-- Gravity Flip Mechanic -->
+<script>
+let gravityFlipped = false;
+
+function toggleGravity() {
+    gravityFlipped = !gravityFlipped;
+    if (gravityFlipped) {
+        player.velocity.y = -player.velocity.y; // Flip gravity
+    }
+}
+</script>
+
+<!-- Score Progression Indicator -->
+<div class="score-progress">
+    <div class="progress-bar" id="scoreProgressBar" style="width: 0%;"></div>
+</div>
+<script>
+function updateScoreProgress(currentScore, milestone) {
+    const progressBar = document.getElementById('scoreProgressBar');
+    const progressPercentage = (currentScore / milestone) * 100;
+    progressBar.style.width = progressPercentage + '%';
+}
+</script>
+
+<!-- Dynamic Feedback Indicators -->
+<div class="feedback-indicator" id="feedbackIndicator"></div>
+<script>
+function showFeedback(message) {
+    const feedbackIndicator = document.getElementById('feedbackIndicator');
+    feedbackIndicator.innerText = message;
+    setTimeout(() => { feedbackIndicator.innerText = ''; }, 2000);
+}
+</script>
+
+<!-- Sound Effects for Power-Ups -->
+<audio id="powerUpSound" src="path/to/powerup-sound.mp3"></audio>
+<script>
+function playPowerUpSound() {
+    const sound = document.getElementById('powerUpSound');
+    sound.play();
+}
+</script>
+
+<!-- Environmental Soundscapes -->
+<audio id="ambientSound" src="path/to/ambient-sound.mp3" loop></audio>
+<script>
+function changeAmbientSound(location) {
+    const ambientSound = document.getElementById('ambientSound');
+    ambientSound.src = 'path/to/' + location + '-ambient.mp3';
+    ambientSound.play();
+}
+</script>
+
+<!-- Combo System Mechanic -->
+<script>
+let comboCount = 0;
+
+function increaseCombo() {
+    comboCount++;
+    // Logic to reward player based on combo count
+}
+</script>
+
+<!-- Time Manipulation Mechanic -->
+<script>
+let timeManipulationActive = false;
+
+function toggleTimeManipulation() {
+    if (!timeManipulationActive) {
+        timeManipulationActive = true;
+        // Logic to slow down or rewind time
+        setTimeout(() => { timeManipulationActive = false; }, 5000); // Active for 5 seconds
+    }
+}
+</script>
+
+<!-- Tooltips for UI Elements -->
+<div class="tooltip" id="tooltipElement">Hover over me!</div>
+<script>
+const tooltip = document.getElementById('tooltipElement');
+tooltip.addEventListener('mouseover', () => {
+    tooltip.innerText = 'This is a tooltip!';
+});
+</script>
+
+<!-- Contextual Tooltips -->
+<div class="contextual-tooltip" id="contextualTooltip">Hover for action info!</div>
+<script>
+const contextualTooltip = document.getElementById('contextualTooltip');
+contextualTooltip.addEventListener('mouseover', () => {
+    contextualTooltip.innerText = 'You can jump here!';
+});
+</script>
+
+<!-- Victory Soundtrack -->
+<audio id="victorySoundtrack" src="path/to/victory-soundtrack.mp3"></audio>
+<script>
+function playVictorySoundtrack() {
+    const soundtrack = document.getElementById('victorySoundtrack');
+    soundtrack.play();
+}
+</script>
+
+<!-- Dynamic Camera Transitions -->
+<script>
+function updateCameraPosition(player) {
+    // Logic to smoothly follow player movements and adjust camera
+    // Example: camera.position.x = player.position.x;
+}
+</script>
+
+<!-- Shield System Mechanic -->
+<script>
+let shieldHealth = 100;
+
+function activateShield() {
+    // Logic for absorbing damage with the shield
+    if (shieldHealth > 0) {
+        // Absorb damage
+    } else {
+        // Take health hit
+    }
+}
+</script>
+
+<!-- Environmental Interactions Mechanic -->
+<script>
+function interactWithEnvironment(object) {
+    // Logic to move objects or activate switches
+    object.move(); // Example function to move an object
+}
+</script>
+
+<!-- Consistent Color Coding for UI Elements -->
+<style>
+.health { color: green; }
+.power-up { color: blue; }
+.hazard { color: red; }
+</style>
+
+<!-- Action Highlighting Feature -->
+<script>
+const actionableItems = document.querySelectorAll('.actionable');
+actionableItems.forEach(item => {
+    item.addEventListener('mouseenter', () => {
+        item.classList.add('highlight');
+    });
+    item.addEventListener('mouseleave', () => {
+        item.classList.remove('highlight');
+    });
+});
+</script>
+
+<!-- Enhanced Ambient Sounds -->
+<audio id="ambientSound" src="path/to/ambient-sound.mp3" loop></audio>
+<script>
+function changeAmbientSound(environment) {
+    const ambientSound = document.getElementById('ambientSound');
+    ambientSound.src = `path/to/${environment}-sound.mp3`;
+    ambientSound.play();
+}
+</script>
+
+<!-- Reactive Sound Effects -->
+<audio id="reactiveSound" src="path/to/reactive-sound.mp3"></audio>
+<script>
+function playReactiveSound() {
+    const reactiveSound = document.getElementById('reactiveSound');
+    reactiveSound.play();
+}
+</script>
+
+<!-- Health Regeneration System -->
+<script>
+let health = 100;
+let healthRegenerationRate = 1;
+
+function regenerateHealth() {
+    if (health < 100) {
+        health += healthRegenerationRate;
+    }
+}
+setInterval(regenerateHealth, 1000); // Regenerate health every second
+</script>
+
+<!-- Combo Scoring System -->
+<script>
+let comboCount = 0;
+
+function incrementCombo() {
+    comboCount++;
+    // Logic to update score based on combo count
+}
+</script>
+
+<!-- Dynamic Health Bar -->
+<style>
+#healthBar {
+    width: 100%;
+    height: 20px;
+    background-color: green;
+}
+</style>
+<div id="healthBar"></div>
+<script>
+function updateHealthBar() {
+    const healthBar = document.getElementById('healthBar');
+    healthBar.style.width = health + '%';
+    if (health > 66) {
+        healthBar.style.backgroundColor = 'green';
+    } else if (health > 33) {
+        healthBar.style.backgroundColor = 'yellow';
+    } else {
+        healthBar.style.backgroundColor = 'red';
+    }
+}
+setInterval(updateHealthBar, 100); // Update health bar every 100ms
+</script>
+
+<!-- Victory Sound Effects -->
+<audio id="victorySound" src="path/to/victory-sound.mp3"></audio>
+<script>
+function playVictorySound() {
+    const victorySound = document.getElementById('victorySound');
+    victorySound.play();
+}
+</script>
+
+<!-- Cinematic Camera Angles on Achievements -->
+<script>
+function triggerCinematicAngle() {
+    // Logic for changing camera angles during achievements
+    console.log('Cinematic angle triggered!');
+}
+</script>

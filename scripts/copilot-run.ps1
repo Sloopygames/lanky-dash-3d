@@ -5,6 +5,7 @@ param(
 
 $copilotCmd = if ($IsWindows) { "copilot.bat" } else { "copilot" }
 & $copilotCmd `
+  --model auto `
   --allow-all-tools `
   --no-ask-user `
   --silent `
